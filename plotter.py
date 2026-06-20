@@ -118,7 +118,7 @@ def make_stacked_figure(
     offset_factor: float = 1.1,
     line_width: float = 1.0,      # pt; Origin default is 0.5, user wants 1
     dpi: int = 300,
-    label_x_frac: float = 0.82,
+    label_x_frac: float = 0.97,   # text right-anchors here → always stays inside frame
     normalize: bool = True,
 ) -> bytes:
     """Generate a stacked XRD pattern figure matching Origin style."""
@@ -151,7 +151,10 @@ def make_stacked_figure(
     rc["font.size"] = axis_fontsize  # base size; overridden per element below
 
     with matplotlib.rc_context(rc):
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+        # constrained_layout keeps figure exactly at (fig_width, fig_height);
+        # avoids bbox_inches="tight" which silently expands dimensions.
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height),
+                               constrained_layout=True)
 
         # ── x range ──────────────────────────────────────────────────────────
         all_x = np.concatenate([d["x"] for d in datasets])
@@ -164,14 +167,19 @@ def make_stacked_figure(
             y = d["y"].astype(float)
             if normalize:
                 lo, hi = y.min(), y.max()
+                # Shift so baseline is exactly 0 (no floating-point drift)
                 y = (y - lo) / (hi - lo) if hi > lo else np.zeros_like(y)
+            else:
+                # Even without normalisation, shift each curve so its min = 0
+                y = y - y.min()
             ys_proc.append(y)
 
         offsets: list[float] = []
         cur = 0.0
         for y in ys_proc:
             offsets.append(cur)
-            cur += float(y.max() - y.min()) * offset_factor
+            # span is exactly y.max() because y.min() == 0 after the shift above
+            cur += float(y.max()) * offset_factor
 
         # ── Plot curves ───────────────────────────────────────────────────────
         for d, y, offset in zip(datasets, ys_proc, offsets):
@@ -191,10 +199,11 @@ def make_stacked_figure(
 
                 ax.text(
                     label_x, y_pos, _safe_text(name),
-                    ha="left", va="bottom",
+                    ha="right", va="bottom",   # right-anchor: text grows leftward, never exits frame
                     fontsize=label_fontsize,
                     color=tc,
                     fontfamily=generic_family,
+                    clip_on=True,              # hard clip at axes boundary as safety net
                 )
 
         # ── Axes styling ──────────────────────────────────────────────────────
@@ -224,9 +233,9 @@ def make_stacked_figure(
         # Tick label font size (set explicitly, not via rcParams which may be off)
         ax.tick_params(axis="x", labelsize=tick_fontsize, which="major")
 
-        plt.tight_layout()
+        # No tight_layout() — constrained_layout handles spacing
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+        fig.savefig(buf, format="png", dpi=dpi)   # exact fig_width×fig_height inches
         plt.close(fig)
         buf.seek(0)
         return buf.getvalue()
@@ -272,11 +281,16 @@ def make_plotly_preview(
         yaxis=dict(showticklabels=False, showgrid=False),
         hovermode="x unified",
         height=520,
-        margin=dict(l=60, r=20, t=20, b=60),
+        margin=dict(l=60, r=160, t=20, b=60),   # wider right margin for legend
         plot_bgcolor="white",
         paper_bgcolor="white",
         showlegend=True,
-        legend=dict(x=1.01, y=1, xanchor="left"),
+        legend=dict(
+            x=1.02, y=1,
+            xanchor="left", yanchor="top",
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="lightgrey", borderwidth=1,
+        ),
     )
     fig.update_xaxes(showgrid=False, mirror=True, ticks="outside",
                      showline=True, linecolor="black")

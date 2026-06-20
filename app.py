@@ -279,7 +279,8 @@ with tab_plot:
         adv = st.expander("高级设置")
         with adv:
             dpi = st.select_slider("输出分辨率 (DPI)", [150, 200, 300, 600], value=300)
-            label_x_frac = st.slider("标签 X 位置（0=左 1=右）", 0.0, 1.0, 0.82, 0.01)
+            label_x_frac = st.slider("标签 X 位置（0=左 1=右）", 0.0, 1.0, 0.97, 0.01,
+                                     help="1.0=右框边，文字向左延伸，永远在框内")
 
         # ── Generate ─────────────────────────────────────────────────────
         if st.button("生成堆积图", type="primary"):
