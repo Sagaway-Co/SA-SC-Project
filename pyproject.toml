@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "cif2txt"
+version = "0.1.0"
+description = "CIF to TXT powder diffraction pattern converter (via Bruker RAW v1)"
+requires-python = ">=3.10"
+dependencies = [
+    "pymatgen>=2024.1.1",
+    "numpy>=1.24",
+]
+
+[project.scripts]
+cif2txt = "cif2txt:main"
