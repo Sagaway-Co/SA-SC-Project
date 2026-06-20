@@ -1,3 +1,5 @@
 pymatgen>=2024.1.1
 numpy>=1.24
 gemmi>=0.6
+streamlit>=1.35
+plotly>=5.20
