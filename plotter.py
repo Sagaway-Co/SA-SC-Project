@@ -118,7 +118,7 @@ def make_stacked_figure(
     offset_factor: float = 1.1,
     line_width: float = 1.0,      # pt; Origin default is 0.5, user wants 1
     dpi: int = 300,
-    label_x_frac: float = 0.97,   # text right-anchors here → always stays inside frame
+    label_x_frac: float = 0.93,   # scan starts here (rightmost); text right-anchors, 7% margin from border
     normalize: bool = True,
 ) -> bytes:
     """Generate a stacked XRD pattern figure matching Origin style."""
@@ -181,30 +181,83 @@ def make_stacked_figure(
             # span is exactly y.max() because y.min() == 0 after the shift above
             cur += float(y.max()) * offset_factor
 
-        # ── Plot curves + labels ──────────────────────────────────────────────
-        # Label strategy: anchor at the TOP of each curve's data range.
-        # With va="bottom" the text sits just ABOVE the curve peak, in the
-        # gap between consecutive stacked curves — never overlapping the data.
+        # ── Compute fixed gap in data units ──────────────────────────────────
+        # Total stack height → gap = 5 % of total height (≈ 1 font line at typical DPI)
+        total_height = offsets[-1] + float(ys_proc[-1].max()) if ys_proc else 1.0
+        gap = 0.05 * total_height        # vertical gap between curve and label
+
+        # ── Smart label placement ─────────────────────────────────────────────
+        # Rules (applied per curve):
+        #  1. Try default position (label_x_frac of x-range).
+        #     If curve value there ≤ 60 % of its peak → place ABOVE (va="bottom")
+        #  2. If too high, scan right 30–97 % of x-range for minimum.
+        #     If that minimum ≤ 60 % of peak → place ABOVE that x
+        #  3. If high everywhere (whole scan above 80 % of peak) → place BELOW
+        #     the curve baseline (va="top"), using the original label_x
+
         for d, y, offset in zip(datasets, ys_proc, offsets):
-            x = d["x"]
-            lc = d.get("color", "black")
-            tc = d.get("label_color", lc)
+            x   = d["x"]
+            lc  = d.get("color", "black")
+            tc  = d.get("label_color", lc)
             name = d.get("name", "")
 
             ax.plot(x, y + offset, color=lc, linewidth=line_width)
 
-            if name:
-                # Place label just above the curve's maximum (not at a specific x)
-                y_peak = offset + float(y.max())
-                y_gap  = float(y.max()) * 0.04   # 4 % gap between curve top and text
-                ax.text(
-                    label_x, y_peak + y_gap, _safe_text(name),
-                    ha="right", va="bottom",
-                    fontsize=label_fontsize,
-                    color=tc,
-                    fontfamily=generic_family,
-                    clip_on=False,          # allow label above top spine if barely over
-                )
+            if not name:
+                continue
+
+            y_max_val = float(y.max()) if y.max() > 0 else 1.0
+            HIGH      = 0.60 * y_max_val   # threshold: "high at this point"
+            VERY_HIGH = 0.80 * y_max_val   # threshold: "consistently high"
+
+            # --- Case 1: default x position ---
+            idx_def = int(np.clip(np.searchsorted(x, label_x), 0, len(x) - 1))
+            y_here  = float(y[idx_def])          # normalised curve value at label_x
+
+            if y_here <= HIGH:
+                # Case 1: default x is low enough → place above, as far right as possible
+                lx = label_x
+                ly = float(y[idx_def]) + offset + gap
+                va = "bottom"
+
+            else:
+                # Case 2: scan from RIGHT to LEFT — pick the RIGHTMOST acceptable spot
+                # This keeps labels as close to the right border as possible.
+                x_scan_lo = x_min + 0.30 * (x_max - x_min)
+                mask = (x >= x_scan_lo) & (x <= label_x)
+                lx, ly, va = None, None, None
+
+                if mask.sum() > 0:
+                    xs_m = x[mask]
+                    ys_m = y[mask]
+                    # Iterate right → left; stop at first acceptable position
+                    for xi, yi in zip(xs_m[::-1], ys_m[::-1]):
+                        if float(yi) <= HIGH:
+                            lx = float(xi)
+                            ly = float(yi) + offset + gap
+                            va = "bottom"
+                            break
+
+                if lx is None:
+                    # Case 3: curve is consistently high — place BELOW the baseline
+                    if mask.sum() > 0 and float(y[mask].mean()) >= VERY_HIGH:
+                        lx = label_x
+                        ly = offset - gap
+                        va = "top"
+                    else:
+                        # Last resort: float above peak at label_x
+                        lx = label_x
+                        ly = offset + y_max_val + gap
+                        va = "bottom"
+
+            ax.text(
+                lx, ly, _safe_text(name),
+                ha="right", va=va,
+                fontsize=label_fontsize,
+                color=tc,
+                fontfamily=generic_family,
+                clip_on=False,
+            )
 
         # ── Axes styling ──────────────────────────────────────────────────────
         ax.set_xlim(x_min, x_max)
@@ -213,7 +266,7 @@ def make_stacked_figure(
         #   bottom gap = 25px / 850px * data_range ≈ 2.9 % below 0
         #   top headroom ≈ 50px / 850px * data_range ≈ 5.9 % above top curve
         # Using slightly more generous values for label breathing room:
-        top = offsets[-1] + float(ys_proc[-1].max())
+        top = total_height
         ax.set_ylim(bottom=-0.05 * top,    # ~5 % below 0 → visible gap above x-axis
                     top=top * 1.10)         # 10 % headroom for top-curve label
 

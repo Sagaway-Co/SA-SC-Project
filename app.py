@@ -287,8 +287,8 @@ with tab_plot:
         adv = st.expander("高级设置")
         with adv:
             dpi = st.select_slider("输出分辨率 (DPI)", [150, 200, 300, 600], value=300)
-            label_x_frac = st.slider("标签 X 位置（0=左 1=右）", 0.0, 1.0, 0.97, 0.01,
-                                     help="1.0=右框边，文字向左延伸，永远在框内")
+            label_x_frac = st.slider("标签起始 X（从此向左扫描合适位置）", 0.3, 1.0, 0.93, 0.01,
+                                     help="从该位置向左找第一个合适点，尽量靠右；右边框留 7% 边距")
             # Show actual output pixel size
             px_w = int(fig_w * dpi)
             px_h = int(fig_h * dpi)
