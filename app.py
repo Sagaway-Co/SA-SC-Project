@@ -175,9 +175,17 @@ with tab_plot:
 
     # ── Session state init ──────────────────────────────────────────────────
     if "datasets" not in st.session_state:
-        st.session_state.datasets = []   # list of {name, x, y, color}
+        st.session_state.datasets = []       # list of {name, x, y, color}
+    if "imported_hashes" not in st.session_state:
+        st.session_state.imported_hashes = set()  # content hashes already imported
+
+    DEFAULT_COLORS = [
+        "#000000", "#e41a1c", "#377eb8", "#4daf4a",
+        "#984ea3", "#ff7f00", "#a65628", "#f781bf",
+    ]
 
     # ── File upload ─────────────────────────────────────────────────────────
+    st.caption("支持任意空白（空格/制表符）分隔的两列数值文件，自动跳过非数值行。")
     uploaded_files = st.file_uploader(
         "上传 TXT 文件（每个文件一条曲线，两列：2θ  强度）",
         type=["txt", "xy", "dat", "csv"],
@@ -185,17 +193,13 @@ with tab_plot:
         key="plotter_upload",
     )
 
-    DEFAULT_COLORS = [
-        "#000000", "#e41a1c", "#377eb8", "#4daf4a",
-        "#984ea3", "#ff7f00", "#a65628", "#f781bf",
-    ]
-
     if uploaded_files:
-        existing_names = {d["name"] for d in st.session_state.datasets}
         for f in uploaded_files:
-            if f.name not in existing_names:
+            raw_bytes = f.getvalue()
+            file_hash = hash(raw_bytes)          # content-based dedup
+            if file_hash not in st.session_state.imported_hashes:
                 try:
-                    x, y = load_txt(f.read())
+                    x, y = load_txt(raw_bytes)
                     if len(x) > 0:
                         idx = len(st.session_state.datasets)
                         st.session_state.datasets.append({
@@ -204,6 +208,7 @@ with tab_plot:
                             "y": y,
                             "color": DEFAULT_COLORS[idx % len(DEFAULT_COLORS)],
                         })
+                        st.session_state.imported_hashes.add(file_hash)
                 except Exception as e:
                     st.warning(f"无法解析 {f.name}: {e}")
 
@@ -231,6 +236,7 @@ with tab_plot:
 
         if st.button("清空所有数据集", type="secondary"):
             st.session_state.datasets = []
+            st.session_state.imported_hashes = set()
             st.rerun()
 
         st.divider()
@@ -249,6 +255,8 @@ with tab_plot:
             font_size = st.slider("字号", 8, 24, 16)
 
         with sc3:
+            normalize = st.toggle("各曲线归一化 (0–1)", value=True,
+                                  help="开启后每条曲线独立归一化到 [0,1]，量级不同的数据也能整齐堆叠")
             offset_factor = st.slider("曲线间距系数", 0.5, 3.0, 1.1, 0.1)
             line_width = st.slider("线宽", 0.5, 3.0, 1.0, 0.1)
             col_fw, col_fh = st.columns(2)
@@ -270,7 +278,7 @@ with tab_plot:
             # Interactive preview (plotly)
             preview_fig = make_plotly_preview(
                 datasets_for_plot, x_label=x_label, y_label=y_label,
-                offset_factor=offset_factor,
+                offset_factor=offset_factor, normalize=normalize,
             )
             st.plotly_chart(preview_fig, use_container_width=True)
 
@@ -289,6 +297,7 @@ with tab_plot:
                         line_width=line_width,
                         dpi=dpi,
                         label_x_frac=label_x_frac,
+                        normalize=normalize,
                     )
                     st.image(png_bytes, caption="预览（PNG）", use_container_width=True)
                     st.download_button(

@@ -68,7 +68,8 @@ def make_stacked_figure(
     offset_factor: float = 1.1,
     line_width: float = 1.0,
     dpi: int = 300,
-    label_x_frac: float = 0.82,  # label x position as fraction of x-range from left
+    label_x_frac: float = 0.82,
+    normalize: bool = True,     # normalize each curve to [0, 1] before stacking
 ) -> bytes:
     """
     Generate a stacked XRD pattern figure.
@@ -105,34 +106,44 @@ def make_stacked_figure(
         x_range = x_max - x_min
         label_x = x_min + label_x_frac * x_range
 
-        # Compute per-curve y offset (bottom to top = first to last in list)
+        # Pre-process y values (normalize if requested)
+        ys_processed = []
+        for d in datasets:
+            y = d["y"].astype(float)
+            if normalize:
+                y_min_v, y_max_v = y.min(), y.max()
+                if y_max_v > y_min_v:
+                    y = (y - y_min_v) / (y_max_v - y_min_v)
+                else:
+                    y = np.zeros_like(y)
+            ys_processed.append(y)
+
+        # Compute per-curve y offset (bottom to top = first to last)
         offsets: list[float] = []
         current = 0.0
-        for d in datasets:
+        for y in ys_processed:
             offsets.append(current)
-            y_span = float(np.max(d["y"]) - np.min(d["y"]))
-            current += y_span * offset_factor
+            current += float(y.max() - y.min()) * offset_factor
 
         # Plot curves
-        for d, offset in zip(datasets, offsets):
-            x, y = d["x"], d["y"]
+        for d, y, offset in zip(datasets, ys_processed, offsets):
+            x = d["x"]
             color = d.get("color", "black")
             name = d.get("name", "")
 
             y_shifted = y + offset
             ax.plot(x, y_shifted, color=color, linewidth=line_width)
 
-            # Place label near the curve — find y value at label_x, add small gap
+            # Place label — find y at label_x, raise slightly
             if name:
-                # interpolate y at label_x
                 try:
-                    idx = np.searchsorted(x, label_x)
+                    idx = int(np.searchsorted(x, label_x))
                     idx = min(max(idx, 0), len(y_shifted) - 1)
                     y_at_label = float(y_shifted[idx])
                 except Exception:
-                    y_at_label = offset + float(np.max(y)) * 0.5
+                    y_at_label = offset + float(y.max()) * 0.5
 
-                y_span = float(np.max(d["y"]) - np.min(d["y"]))
+                y_span = float(y.max() - y.min())
                 ax.text(
                     label_x,
                     y_at_label + y_span * 0.05,
@@ -171,6 +182,7 @@ def make_plotly_preview(
     x_label: str = "2θ (degree)",
     y_label: str = "Intensity (a.u.)",
     offset_factor: float = 1.1,
+    normalize: bool = True,
 ) -> object:
     import plotly.graph_objects as go
 
@@ -178,11 +190,17 @@ def make_plotly_preview(
 
     current_offset = 0.0
     for d in datasets:
-        x, y = d["x"], d["y"]
+        x = d["x"]
+        y = d["y"].astype(float)
         color = d.get("color", "black")
         name = d.get("name", "")
-        y_span = float(np.max(y) - np.min(y)) if len(y) > 0 else 1.0
 
+        if normalize:
+            y_min_v, y_max_v = y.min(), y.max()
+            if y_max_v > y_min_v:
+                y = (y - y_min_v) / (y_max_v - y_min_v)
+
+        y_span = float(y.max() - y.min()) if len(y) > 0 else 1.0
         y_shifted = y + current_offset
 
         fig.add_trace(go.Scatter(
@@ -191,7 +209,7 @@ def make_plotly_preview(
             mode="lines",
             name=name,
             line=dict(color=color, width=1),
-            hovertemplate=f"{name}<br>2θ=%{{x:.3f}}°<br>I=%{{y:.1f}}<extra></extra>",
+            hovertemplate=f"{name}<br>2θ=%{{x:.3f}}°<br>I=%{{y:.4f}}<extra></extra>",
         ))
 
         current_offset += y_span * offset_factor
