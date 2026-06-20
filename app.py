@@ -274,14 +274,14 @@ with tab_plot:
             line_width = st.slider("线宽 (pt)", 0.3, 3.0, 1.0, 0.1)
             fig_w = st.number_input("图宽 (inch)", 4.0, 20.0, 10.0, 0.5)
 
-            # Target landscape ratio 1.42:1 (matching Origin reference 3390×2380)
+            # Target landscape ratio 4:3 (1.333:1) — measured from reference Plotly figure
             # height grows slightly with more curves but stays landscape
             n = len(st.session_state.datasets) or 1
-            auto_h = round(fig_w / 1.42 + (n - 3) * 0.5, 1)
+            auto_h = round(fig_w / 1.333 + max(0, n - 3) * 0.4, 1)
             auto_h = max(3.5, auto_h)
             auto_h = st.number_input("图高 (inch，自动推荐)", 3.0, 20.0,
                                      float(auto_h), 0.5,
-                                     help=f"横向比例 1.42:1，当前 {n} 条曲线推荐 {auto_h} inch")
+                                     help=f"4:3 横向比例，当前 {n} 条曲线推荐 {auto_h} inch")
             fig_h = auto_h
 
         adv = st.expander("高级设置")

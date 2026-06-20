@@ -209,9 +209,13 @@ def make_stacked_figure(
         # ── Axes styling ──────────────────────────────────────────────────────
         ax.set_xlim(x_min, x_max)
 
-        # y-axis upper limit: top of highest curve + headroom for its label
+        # y-axis limits — measured from reference figure (Plotly 1268×951 px):
+        #   bottom gap = 25px / 850px * data_range ≈ 2.9 % below 0
+        #   top headroom ≈ 50px / 850px * data_range ≈ 5.9 % above top curve
+        # Using slightly more generous values for label breathing room:
         top = offsets[-1] + float(ys_proc[-1].max())
-        ax.set_ylim(bottom=0, top=top * 1.15)   # 15 % head-room keeps top label inside
+        ax.set_ylim(bottom=-0.05 * top,    # ~5 % below 0 → visible gap above x-axis
+                    top=top * 1.10)         # 10 % headroom for top-curve label
 
         # All 4 spines visible (complete box), uniform weight
         for spine in ax.spines.values():
