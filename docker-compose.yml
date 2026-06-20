@@ -1,6 +1,24 @@
 services:
-  cif2txt:
-    build: .
-    ports:
-      - "8501:8501"
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
+    networks: [xrd-net]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on: [backend]
+    restart: unless-stopped
+    networks: [xrd-net]
+
+  # Legacy Streamlit (kept for reference)
+  # streamlit:
+  #   build: .
+  #   ports: ["8501:8501"]
+
+networks:
+  xrd-net:
+    driver: bridge

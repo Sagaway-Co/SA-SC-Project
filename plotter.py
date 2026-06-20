@@ -206,6 +206,23 @@ def make_stacked_figure(
             if not name:
                 continue
 
+            # --- Manual placement override ---
+            # If the dataset explicitly specifies label_x and label_y, skip all
+            # smart placement logic and use those coordinates directly.
+            if d.get("label_x") is not None and d.get("label_y") is not None:
+                lx = d["label_x"]
+                ly = d["label_y"] + offset   # label_y is relative; add offset for absolute coords
+                va = d.get("label_va", "bottom")
+                ax.text(
+                    lx, ly, _safe_text(name),
+                    ha="right", va=va,
+                    fontsize=label_fontsize,
+                    color=tc,
+                    fontfamily=generic_family,
+                    clip_on=False,
+                )
+                continue
+
             y_max_val = float(y.max()) if y.max() > 0 else 1.0
             HIGH      = 0.60 * y_max_val   # threshold: "high at this point"
             VERY_HIGH = 0.80 * y_max_val   # threshold: "consistently high"
