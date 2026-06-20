@@ -82,19 +82,26 @@ def make_stacked_figure(
     if not datasets:
         raise ValueError("No datasets provided")
 
+    from matplotlib.ticker import AutoMinorLocator, MultipleLocator
+
     font_family = _resolve_font(font_name)
     rc = {
-        "font.family":        font_family,
-        "font.size":          font_size,
-        "axes.linewidth":     1.5,
-        "xtick.major.width":  1.5,
-        "xtick.minor.width":  1.0,
-        "xtick.direction":    "in",
-        "xtick.major.size":   5,
-        "xtick.minor.size":   3,
-        "xtick.minor.visible": True,
-        "figure.facecolor":   "white",
-        "axes.facecolor":     "white",
+        "font.family":          font_family,
+        "font.size":            font_size,
+        "axes.linewidth":       1.5,
+        # x ticks — outward, both top and bottom, with minor ticks
+        "xtick.direction":      "out",
+        "xtick.major.width":    1.5,
+        "xtick.minor.width":    1.0,
+        "xtick.major.size":     6,
+        "xtick.minor.size":     3,
+        "xtick.minor.visible":  True,
+        "xtick.top":            True,       # mirror ticks on top spine
+        # y ticks — none (stacked intensity plot)
+        "ytick.left":           False,
+        "ytick.right":          False,
+        "figure.facecolor":     "white",
+        "axes.facecolor":       "white",
     }
 
     with matplotlib.rc_context(rc):
@@ -128,11 +135,12 @@ def make_stacked_figure(
         # Plot curves
         for d, y, offset in zip(datasets, ys_processed, offsets):
             x = d["x"]
-            color = d.get("color", "black")
+            line_color  = d.get("color", "black")
+            label_color = d.get("label_color", line_color)   # independent text color
             name = d.get("name", "")
 
             y_shifted = y + offset
-            ax.plot(x, y_shifted, color=color, linewidth=line_width)
+            ax.plot(x, y_shifted, color=line_color, linewidth=line_width)
 
             # Place label — find y at label_x, raise slightly
             if name:
@@ -151,20 +159,29 @@ def make_stacked_figure(
                     ha="left",
                     va="bottom",
                     fontsize=font_size - 1,
-                    color=color,
+                    color=label_color,
                     fontfamily=font_family,
                 )
 
-        # Axes styling
+        # ── Axes styling: match Origin reference ──────────────────────────
         ax.set_xlim(x_min, x_max)
         ax.set_xlabel(x_label, fontsize=font_size, fontfamily=font_family)
         ax.set_ylabel(y_label, fontsize=font_size, fontfamily=font_family)
 
-        # Hide y tick labels but keep spine (stacked plots don't show intensity scale)
+        # Complete box frame (all 4 spines visible)
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_linewidth(1.5)
+
+        # y-axis: show spine but no tick marks or labels
         ax.set_yticks([])
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_visible(False)
+        ax.yaxis.set_tick_params(length=0)
+
+        # x-axis: major ticks every 5°, minor ticks every 1°
+        x_span = x_max - x_min
+        major_step = 5.0 if x_span <= 60 else 10.0
+        ax.xaxis.set_major_locator(MultipleLocator(major_step))
+        ax.xaxis.set_minor_locator(AutoMinorLocator(5))   # 5 minor per major → 1° step
 
         plt.tight_layout()
 

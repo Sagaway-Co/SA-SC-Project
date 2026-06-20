@@ -202,11 +202,13 @@ with tab_plot:
                     x, y = load_txt(raw_bytes)
                     if len(x) > 0:
                         idx = len(st.session_state.datasets)
+                        c = DEFAULT_COLORS[idx % len(DEFAULT_COLORS)]
                         st.session_state.datasets.append({
                             "name": os.path.splitext(f.name)[0],
                             "x": x,
                             "y": y,
-                            "color": DEFAULT_COLORS[idx % len(DEFAULT_COLORS)],
+                            "color":       c,
+                            "label_color": c,   # default: same as line color
                         })
                         st.session_state.imported_hashes.add(file_hash)
                 except Exception as e:
@@ -216,20 +218,28 @@ with tab_plot:
     if st.session_state.datasets:
         st.markdown("#### 数据集管理（从下到上排列，第 1 个在底部）")
 
+        # Header row
+        h0, h1, h2, h3, h4, h5 = st.columns([0.35, 2, 0.7, 0.7, 0.7, 0.4])
+        h0.caption("#"); h1.caption("名称"); h2.caption("线色")
+        h3.caption("字色"); h4.caption("点数"); h5.caption("")
+
         to_delete = []
         for i, d in enumerate(st.session_state.datasets):
-            c_idx, c_name, c_color, c_pts, c_del = st.columns([0.4, 2, 0.8, 0.8, 0.4])
+            c_idx, c_name, c_color, c_lcolor, c_pts, c_del = st.columns([0.35, 2, 0.7, 0.7, 0.7, 0.4])
             c_idx.markdown(f"**{i + 1}**")
             new_name = c_name.text_input("名称", value=d["name"],
                                          key=f"name_{i}", label_visibility="collapsed")
-            new_color = c_color.color_picker("颜色", value=d["color"],
+            new_color = c_color.color_picker("线色", value=d.get("color", "#000000"),
                                              key=f"color_{i}", label_visibility="collapsed")
+            new_lcolor = c_lcolor.color_picker("字色", value=d.get("label_color", d.get("color", "#000000")),
+                                               key=f"lcolor_{i}", label_visibility="collapsed")
             c_pts.caption(f"{len(d['x'])} 点")
             if c_del.button("✕", key=f"del_{i}"):
                 to_delete.append(i)
 
-            st.session_state.datasets[i]["name"] = new_name
-            st.session_state.datasets[i]["color"] = new_color
+            st.session_state.datasets[i]["name"]        = new_name
+            st.session_state.datasets[i]["color"]       = new_color
+            st.session_state.datasets[i]["label_color"] = new_lcolor
 
         for i in reversed(to_delete):
             st.session_state.datasets.pop(i)
@@ -271,7 +281,11 @@ with tab_plot:
         # ── Generate ─────────────────────────────────────────────────────
         if st.button("生成堆积图", type="primary"):
             datasets_for_plot = [
-                {"x": d["x"], "y": d["y"], "name": d["name"], "color": d["color"]}
+                {
+                    "x": d["x"], "y": d["y"], "name": d["name"],
+                    "color": d["color"],
+                    "label_color": d.get("label_color", d["color"]),
+                }
                 for d in st.session_state.datasets
             ]
 
