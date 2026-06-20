@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sagaway Lab — 科研计算工具平台</title>
+<style>
+/* ── Reset ──────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ground);color:var(--text-primary);font-family:var(--font-body);-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+button,input{font-family:inherit;outline:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── Design Tokens ──────────────────────────────────────────── */
+:root{
+  --ground:#0a0a0f;
+  --blue-electric:#4fc3f7;
+  --cyan-fluoro:#00e5ff;
+  --accent:#00e5ff;
+  --accent-gradient:linear-gradient(135deg,#4fc3f7,#00e5ff);
+
+  --surface-base:#0a0a0f;
+  --surface-glass:rgba(255,255,255,.042);
+  --surface-glass-hi:rgba(255,255,255,.072);
+  --surface-card:#0e0e16;
+  --surface-raised:#0d0d14;
+  --surface-inset:rgba(0,0,0,.32);
+  --surface-overlay:rgba(5,5,10,.78);
+
+  --border-glass:rgba(255,255,255,.08);
+  --border-soft:rgba(255,255,255,.12);
+  --border-subtle:rgba(255,255,255,.055);
+  --border-accent:rgba(0,229,255,.38);
+
+  --text-primary:rgba(255,255,255,.93);
+  --text-secondary:rgba(255,255,255,.58);
+  --text-muted:rgba(255,255,255,.32);
+  --text-on-accent:#03202a;
+  --grey-200:#dee1e6;
+
+  --status-online:#2de2a8;
+  --status-maint:#ffb84d;
+  --status-error:#ff5d73;
+
+  --shadow-glass:0 4px 24px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.065);
+  --shadow-glass-hover:0 10px 36px rgba(0,0,0,.56),inset 0 1px 0 rgba(255,255,255,.10);
+  --shadow-xl:0 24px 64px rgba(0,0,0,.62);
+  --glow-cyan-sm:0 0 12px rgba(0,229,255,.22);
+  --glow-cyan-lg:0 0 28px rgba(0,229,255,.48),0 0 8px rgba(0,229,255,.28);
+  --glow-online:0 0 8px rgba(45,226,168,.75);
+
+  --blur-glass:blur(16px) saturate(1.45);
+  --blur-overlay:blur(24px);
+
+  --font-display:'Segoe UI Variable Display','SF Pro Display','Helvetica Neue',system-ui,sans-serif;
+  --font-body:'Segoe UI','SF Pro Text',-apple-system,system-ui,sans-serif;
+  --font-mono:ui-monospace,'Cascadia Code','SF Mono','Fira Code',monospace;
+
+  --radius-sm:6px;--radius-md:10px;--radius-lg:14px;--radius-xl:18px;--radius-pill:999px;
+  --space-6:24px;
+  --dur-fast:120ms;--dur-base:200ms;--dur-slow:320ms;--dur-slower:480ms;
+  --ease-out:cubic-bezier(.25,.46,.45,.94);
+  --nav-height:58px;--container-max:1200px;--grid-gap:16px;
+  --viz-1:#4fc3f7;--viz-2:#00e5ff;--viz-3:#2de2a8;--viz-4:#7c6ff7;--viz-5:#ffb84d;--viz-6:#ff7043;
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes saga-sweep{from{left:-100%}to{left:140%}}
+@keyframes saga-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes saga-pulse{0%,100%{opacity:1}50%{opacity:.42}}
+@keyframes saga-toast-in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes saga-toast-out{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(20px)}}
+@keyframes saga-spin{to{transform:rotate(360deg)}}
+@keyframes saga-count{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+
+/* ── TopNav ─────────────────────────────────────────────────── */
+#nav{
+  position:sticky;top:0;z-index:40;height:var(--nav-height);
+  display:flex;align-items:center;gap:20px;padding:0 24px;
+  background:rgba(10,10,15,.76);
+  backdrop-filter:var(--blur-glass);-webkit-backdrop-filter:var(--blur-glass);
+  border-bottom:1px solid var(--border-subtle);
+}
+.nav-logo{display:flex;align-items:center;gap:10px;flex:none}
+.nav-logo svg{flex:none}
+.nav-cats{display:flex;gap:2px;flex:1;min-width:0;overflow:hidden}
+.cat-btn{
+  padding:7px 13px;border-radius:var(--radius-sm);border:none;cursor:pointer;
+  background:transparent;color:var(--text-secondary);
+  font-family:var(--font-body);font-size:13.5px;font-weight:500;
+  white-space:nowrap;transition:all var(--dur-fast) var(--ease-out);
+}
+.cat-btn.active,.cat-btn:hover{color:var(--accent);background:rgba(0,229,255,.09)}
+.cat-btn.active{font-weight:600}
+.nav-right{flex:none;display:flex;align-items:center;gap:16px}
+.nav-stat{display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding-right:14px;border-right:1px solid var(--border-subtle)}
+.nav-stat-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+.nav-stat-value{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-primary)}
+.nav-stat-delta{font-size:11px;color:var(--status-online)}
+.nav-balance{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.nav-balance-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+.nav-balance-amount{font-family:var(--font-mono);font-size:20px;font-weight:600;letter-spacing:.01em;color:var(--text-primary);transition:color var(--dur-base) var(--ease-out)}
+.nav-balance-amount.low{color:var(--status-error)}
+.nav-balance-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn{
+  position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;
+  gap:7px;border:1px solid transparent;border-radius:var(--radius-md);
+  cursor:pointer;white-space:nowrap;user-select:none;font-weight:600;letter-spacing:-.005em;
+  transition:transform var(--dur-fast) var(--ease-out),box-shadow var(--dur-base) var(--ease-out),background var(--dur-base) var(--ease-out);
+}
+.btn:active{transform:scale(.97)}
+.btn-sm{height:32px;padding:0 12px;font-size:13px;border-radius:var(--radius-sm)}
+.btn-md{height:40px;padding:0 18px;font-size:14px}
+.btn-lg{height:48px;padding:0 26px;font-size:15px}
+.btn-primary{background:var(--accent-gradient);color:var(--text-on-accent);box-shadow:var(--glow-cyan-sm)}
+.btn-primary:hover{box-shadow:var(--glow-cyan-lg)}
+.btn-primary::after{content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);transition:none}
+.btn-primary:hover::after{animation:saga-sweep .5s var(--ease-out)}
+.btn-secondary{background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--text-primary);border-color:var(--border-glass)}
+.btn-secondary:hover{background:var(--surface-glass-hi);border-color:var(--border-accent)}
+.btn-ghost{background:transparent;color:var(--text-secondary)}
+.btn-ghost:hover{background:rgba(255,255,255,.05);color:var(--text-primary)}
+.btn-danger{background:rgba(255,93,115,.12);color:var(--status-error);border-color:rgba(255,93,115,.35)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+
+/* ── Badge ──────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;
+  font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.02em;
+  border-radius:var(--radius-pill);white-space:nowrap;
+}
+.badge[data-tone=neutral]{color:var(--text-secondary);background:rgba(255,255,255,.05);border:1px solid var(--border-soft)}
+.badge[data-tone=online]{color:var(--status-online);background:rgba(45,226,168,.1);border:1px solid rgba(45,226,168,.3)}
+.badge[data-tone=maint]{color:var(--status-maint);background:rgba(255,184,77,.1);border:1px solid rgba(255,184,77,.3)}
+.badge[data-tone=error]{color:var(--status-error);background:rgba(255,93,115,.1);border:1px solid rgba(255,93,115,.3)}
+.badge[data-tone=accent]{color:var(--accent);background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3)}
+.badge[data-tone=solid]{background:var(--accent-gradient);color:var(--text-on-accent);border:1px solid transparent;box-shadow:var(--glow-cyan-sm)}
+.badge-dot{width:6px;height:6px;border-radius:50%;flex:none}
+.badge[data-tone=online] .badge-dot{background:var(--status-online);box-shadow:var(--glow-online);animation:saga-pulse 2.2s var(--ease-out) infinite}
+.badge[data-tone=maint] .badge-dot{background:var(--status-maint)}
+
+/* ── Glass Card ─────────────────────────────────────────────── */
+.glass-card{
+  position:relative;overflow:hidden;
+  background:var(--surface-glass);
+  backdrop-filter:var(--blur-glass);-webkit-backdrop-filter:var(--blur-glass);
+  border:1px solid var(--border-glass);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-glass);
+  transition:transform var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out),border-color var(--dur-base) var(--ease-out),opacity var(--dur-base) var(--ease-out);
+}
+.glass-card.interactive:hover{
+  transform:translateY(-4px);border-color:var(--border-accent);
+  box-shadow:var(--shadow-glass-hover);
+}
+.glass-card.interactive:hover .card-sweep{animation:saga-sweep var(--dur-slower) var(--ease-out)}
+.glass-card.locked{opacity:.52;filter:saturate(.6)}
+.card-sweep{position:absolute;top:0;left:-100%;width:40%;height:1px;background:linear-gradient(90deg,transparent,var(--cyan-fluoro),transparent);pointer-events:none}
+.glass-card.glow{box-shadow:var(--shadow-glass),var(--glow-cyan-sm)}
+
+/* ── Hero ───────────────────────────────────────────────────── */
+#hero{
+  position:relative;overflow:hidden;padding:72px 24px 56px;
+  background:linear-gradient(180deg,transparent 30%,var(--surface-base) 100%);
+}
+#hero-canvas{position:absolute;inset:0;opacity:.82;pointer-events:none}
+.hero-radial{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(0,229,255,.07),transparent 65%)}
+.hero-inner{position:relative;max-width:var(--container-max);margin:0 auto;text-align:center}
+.hero-eyebrow{display:inline-flex;margin-bottom:22px}
+.hero-h1{
+  margin:0;font-family:var(--font-display);font-weight:600;
+  font-size:clamp(32px,5.2vw,60px);line-height:1.04;letter-spacing:-.02em;
+  color:var(--text-primary);
+}
+.hero-h1 em{
+  font-style:normal;
+  background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{margin:18px auto 0;max-width:520px;font-size:16px;line-height:1.6;color:var(--text-secondary)}
+.hero-counters{display:flex;justify-content:center;gap:56px;margin-top:40px;flex-wrap:wrap}
+.hero-counter{display:flex;flex-direction:column;align-items:center;gap:6px;animation:saga-rise var(--dur-slow) var(--ease-out) both}
+.hero-counter:nth-child(2){animation-delay:80ms}
+.hero-counter:nth-child(3){animation-delay:160ms}
+.hero-counter-icon{color:var(--accent);margin-bottom:2px}
+.hero-counter-val{font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:-.01em;color:var(--text-primary)}
+.hero-counter-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+
+/* ── Tool Grid ──────────────────────────────────────────────── */
+#tools{max-width:var(--container-max);margin:0 auto;padding:8px 24px 64px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+.section-title{font-family:var(--font-display);font-weight:600;font-size:22px;letter-spacing:-.01em}
+.section-meta{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted)}
+.tool-grid{display:grid;gap:var(--grid-gap);grid-template-columns:repeat(auto-fill,minmax(264px,1fr))}
+.tool-card-wrap{animation:saga-rise var(--dur-slow) var(--ease-out) both}
+.tool-card{display:flex;flex-direction:column;height:100%;gap:14px;padding:20px}
+.tool-card-top{display:flex;align-items:flex-start;justify-content:space-between}
+.tool-icon{
+  width:44px;height:44px;border-radius:var(--radius-md);
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.22);
+  color:var(--accent);
+}
+.tool-card.locked .tool-icon{box-shadow:none;color:var(--text-muted);background:rgba(255,255,255,.04);border-color:var(--border-soft)}
+.tool-icon:not(.locked .tool-icon){box-shadow:var(--glow-cyan-sm)}
+.tool-name{font-family:var(--font-display);font-weight:600;font-size:16.5px;letter-spacing:-.01em;color:var(--text-primary)}
+.tool-desc{font-size:13px;color:var(--text-secondary);margin-top:5px;line-height:1.5}
+.tool-footer{display:flex;align-items:flex-end;justify-content:space-between;margin-top:auto}
+.tool-trend{display:flex;flex-direction:column;gap:3px}
+.tool-calls{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);letter-spacing:.06em}
+.sparkline{display:block;overflow:visible}
+.use-btn{margin-top:12px;width:100%}
+
+/* ── Billing Dashboard ──────────────────────────────────────── */
+#billing{max-width:var(--container-max);margin:0 auto;padding:0 24px 72px}
+.section-icon-title{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+.section-icon-title .section-title{margin:0}
+.billing-grid{display:grid;gap:var(--grid-gap);grid-template-columns:300px 1fr;align-items:stretch}
+.billing-ring-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:28px}
+.ring-wrap{position:relative}
+.ring-wrap svg{display:block}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring-center-top{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase}
+.ring-center-main{font-family:var(--font-mono);font-weight:600;font-size:28px;color:var(--text-primary);line-height:1.1}
+.ring-center-sub{font-family:var(--font-body);font-size:12px;color:var(--text-secondary);margin-top:2px}
+.ring-meta{display:flex;gap:18px;font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+.ring-meta b{color:var(--text-primary)}
+.billing-right{display:grid;gap:var(--grid-gap);grid-template-columns:1fr 1fr}
+.subhead{display:flex;align-items:center;gap:7px;margin-bottom:14px}
+.subhead-icon{color:var(--accent)}
+.subhead-title{font-family:var(--font-display);font-weight:600;font-size:14px;letter-spacing:-.005em}
+.subhead-sub{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);margin-left:auto}
+.bar-chart{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-label{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);width:40px;flex:none;text-align:right}
+.bar-track{flex:1;height:6px;border-radius:var(--radius-pill);background:rgba(255,255,255,.07);overflow:hidden}
+.bar-fill{height:100%;border-radius:var(--radius-pill);transition:width .8s var(--ease-out)}
+.bar-val{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);width:32px;flex:none}
+.txn-list{display:flex;flex-direction:column;gap:0;overflow:hidden;flex:1}
+.txn-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border-subtle);animation:saga-rise var(--dur-base) var(--ease-out) both}
+.txn-item:last-child{border-bottom:none}
+.txn-dot{width:7px;height:7px;border-radius:50%;flex:none}
+.txn-dot.credit{background:var(--status-online);box-shadow:var(--glow-online)}
+.txn-dot.debit{background:var(--text-muted)}
+.txn-info{flex:1;min-width:0}
+.txn-tool{font-size:13px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txn-time{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted)}
+.txn-amount{font-family:var(--font-mono);font-size:14px;font-weight:600;flex:none}
+.txn-amount.credit{color:var(--status-online)}
+.txn-amount.debit{color:var(--text-secondary)}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+footer{border-top:1px solid var(--border-subtle);background:var(--surface-raised)}
+.footer-inner{max-width:var(--container-max);margin:0 auto;padding:40px 24px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}
+.footer-brand{display:flex;align-items:center;gap:10px}
+.footer-links{display:flex;gap:20px;font-size:13px;color:var(--text-muted)}
+.footer-links a{color:var(--text-muted);text-decoration:none;transition:color var(--dur-fast)}
+.footer-links a:hover{color:var(--text-secondary)}
+.footer-copy{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+
+/* ── Recharge Modal ─────────────────────────────────────────── */
+#modal-overlay{
+  position:fixed;inset:0;z-index:60;display:none;
+  align-items:center;justify-content:center;padding:24px;
+  background:var(--surface-overlay);backdrop-filter:var(--blur-overlay);
+  animation:saga-rise var(--dur-base) var(--ease-out);
+}
+#modal-overlay.open{display:flex}
+.modal-box{
+  width:min(440px,100%);background:var(--surface-card);
+  border:1px solid var(--border-soft);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-xl);overflow:hidden;
+}
+.modal-head{padding:22px 24px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.modal-title{font-family:var(--font-display);font-weight:600;font-size:19px}
+.modal-sub{font-size:13px;color:var(--text-secondary);margin-top:4px}
+.modal-close{background:transparent;border:none;cursor:pointer;color:var(--text-muted);padding:4px;display:inline-flex;border-radius:var(--radius-sm);transition:color var(--dur-fast)}
+.modal-close:hover{color:var(--text-primary)}
+.modal-body{padding:20px 24px 24px}
+.modal-label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;display:block}
+.pay-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.pay-btn{
+  display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px;
+  background:var(--surface-glass);border:1px solid var(--border-glass);
+  border-radius:var(--radius-md);cursor:pointer;
+  font-family:var(--font-body);font-size:13px;color:var(--text-secondary);
+  transition:all var(--dur-base) var(--ease-out);
+}
+.pay-btn.active{background:rgba(0,229,255,.09);border-color:var(--border-accent);color:var(--accent)}
+.pay-btn:hover{border-color:var(--border-soft);color:var(--text-primary)}
+.amount-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.amount-preset{
+  padding:10px 0;border-radius:var(--radius-md);
+  background:var(--surface-glass);border:1px solid var(--border-glass);
+  cursor:pointer;font-family:var(--font-mono);font-size:14px;font-weight:500;
+  color:var(--text-secondary);text-align:center;
+  transition:all var(--dur-base) var(--ease-out);
+}
+.amount-preset.active{background:rgba(0,229,255,.09);border-color:var(--border-accent);color:var(--accent)}
+.amount-preset:hover{border-color:var(--border-soft);color:var(--text-primary)}
+.amount-input-wrap{
+  display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;
+  background:var(--surface-inset);border-radius:var(--radius-md);
+  border:1px solid var(--border-soft);margin-bottom:20px;
+  transition:border-color var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out);
+}
+.amount-input-wrap:focus-within{border-color:var(--border-accent);box-shadow:var(--glow-cyan-sm)}
+.amount-prefix{font-family:var(--font-mono);color:var(--text-secondary);font-size:14px;flex:none}
+.amount-input{flex:1;border:none;background:transparent;color:var(--text-primary);font-family:var(--font-mono);font-size:15px}
+.modal-footer{display:flex;gap:10px}
+.modal-footer .btn{flex:1}
+
+/* ── Toast ──────────────────────────────────────────────────── */
+#toast-stack{position:fixed;right:24px;bottom:24px;z-index:70;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.toast{
+  display:inline-flex;align-items:center;gap:12px;min-width:248px;padding:12px 16px;
+  background:var(--surface-glass);backdrop-filter:var(--blur-glass);-webkit-backdrop-filter:var(--blur-glass);
+  border-radius:var(--radius-md);box-shadow:var(--shadow-xl);
+  animation:saga-toast-in var(--dur-base) var(--ease-out);
+  pointer-events:auto;
+}
+.toast.out{animation:saga-toast-out var(--dur-base) var(--ease-out) forwards}
+.toast[data-tone=debit]{border:1px solid rgba(0,229,255,.28)}
+.toast[data-tone=success]{border:1px solid rgba(45,226,168,.28)}
+.toast[data-tone=error]{border:1px solid rgba(255,93,115,.28)}
+.toast-icon{
+  width:30px;height:30px;flex:none;border-radius:var(--radius-sm);
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.05);
+}
+.toast[data-tone=debit] .toast-icon{color:var(--accent);box-shadow:0 0 12px rgba(0,229,255,.28)}
+.toast[data-tone=success] .toast-icon{color:var(--status-online);box-shadow:0 0 12px rgba(45,226,168,.28)}
+.toast[data-tone=error] .toast-icon{color:var(--status-error)}
+.toast-body{flex:1;min-width:0}
+.toast-amount{font-family:var(--font-mono);font-weight:600;font-size:15px}
+.toast[data-tone=debit] .toast-amount{color:var(--accent)}
+.toast[data-tone=success] .toast-amount{color:var(--status-online)}
+.toast-title{font-size:13px;color:var(--text-secondary)}
+
+/* ── Inline SVG Icons ────────────────────────────────────────── */
+.icon{display:inline-flex;align-items:center;justify-content:center;flex:none;line-height:0}
+.icon svg{display:block}
+</style>
+</head>
+<body>
+
+<!-- ── TopNav ──────────────────────────────────────────────── -->
+<header id="nav">
+  <div class="nav-logo">
+    <!-- Logo mark inline -->
+    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Sagaway Lab">
+      <defs>
+        <linearGradient id="sgEdge" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse"><stop stop-color="#4fc3f7"/><stop offset="1" stop-color="#00e5ff"/></linearGradient>
+        <linearGradient id="sgWave" x1="10" y1="24" x2="38" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4fc3f7"/><stop offset="1" stop-color="#00e5ff"/></linearGradient>
+      </defs>
+      <rect x="9.5" y="9.5" width="29" height="29" rx="8" transform="rotate(45 24 24)" stroke="url(#sgEdge)" stroke-width="1.6" opacity="0.55"/>
+      <rect x="13" y="13" width="22" height="22" rx="6" transform="rotate(45 24 24)" stroke="url(#sgEdge)" stroke-width="2"/>
+      <path d="M13 24 H19 L21.5 17 L26.5 31 L29 24 H35" stroke="url(#sgWave)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="24" cy="6.2" r="1.3" fill="#00e5ff"/><circle cx="24" cy="41.8" r="1.3" fill="#00e5ff"/>
+      <circle cx="6.2" cy="24" r="1.3" fill="#4fc3f7"/><circle cx="41.8" cy="24" r="1.3" fill="#4fc3f7"/>
+    </svg>
+    <span style="font-family:var(--font-display);font-weight:600;font-size:16px;letter-spacing:-.01em">Sagaway <span style="color:var(--text-muted);font-weight:400">Lab</span></span>
+  </div>
+
+  <nav class="nav-cats" id="nav-cats">
+    <button class="cat-btn active" data-cat="all">全部工具</button>
+    <button class="cat-btn" data-cat="crystallography">晶体学</button>
+    <button class="cat-btn" data-cat="signal">信号处理</button>
+    <button class="cat-btn" data-cat="spectroscopy">光谱</button>
+    <button class="cat-btn" data-cat="chemistry">化学</button>
+    <button class="cat-btn" data-cat="bio">生物信息</button>
+  </nav>
+
+  <div class="nav-right">
+    <div class="nav-stat">
+      <span class="nav-stat-label">今日调用</span>
+      <span class="nav-stat-value" id="nav-calls">3,284</span>
+      <span class="nav-stat-delta">▲ +12.4%</span>
+    </div>
+    <div class="nav-balance">
+      <span class="nav-balance-label">账户余额</span>
+      <span class="nav-balance-amount" id="nav-balance">¥128.50</span>
+      <span class="nav-balance-sub" id="nav-balance-sub">约可用 257 次</span>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openRecharge()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      充值
+    </button>
+  </div>
+</header>
+
+<!-- ── Hero ────────────────────────────────────────────────── -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-radial"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">
+      <span class="badge" data-tone="accent">
+        <span class="badge-dot" style="background:var(--accent);box-shadow:var(--glow-cyan-sm);animation:saga-pulse 2.2s ease-in-out infinite"></span>
+        实时计算集群 · 全部在线
+      </span>
+    </div>
+    <h1 class="hero-h1">科研计算工具，<br><em>按次计费，即开即用</em></h1>
+    <p class="hero-sub">无需订阅，无需部署。充值即可调用上百个科学计算小工具，只为真正消耗的算力付费。</p>
+    <div class="hero-counters">
+      <div class="hero-counter">
+        <div class="hero-counter-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M2 9h2M2 15h2M22 9h-2M22 15h-2M15 22v-2M9 22v-2"/></svg>
+        </div>
+        <span class="hero-counter-val" id="ctr-calcs">0</span>
+        <span class="hero-counter-label">已运行计算次数</span>
+      </div>
+      <div class="hero-counter">
+        <div class="hero-counter-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <span class="hero-counter-val" id="ctr-hours">0</span>
+        <span class="hero-counter-label">节省研究工时 (h)</span>
+      </div>
+      <div class="hero-counter">
+        <div class="hero-counter-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <span class="hero-counter-val">8</span>
+        <span class="hero-counter-label">工具分类在线</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Tool Grid ─────────────────────────────────────────────── -->
+<section id="tools">
+  <div class="section-head">
+    <h2 class="section-title">工具市场</h2>
+    <div class="section-meta">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+      <span id="tools-count">8 个工具</span>
+    </div>
+  </div>
+  <div class="tool-grid" id="tool-grid"></div>
+</section>
+
+<!-- ── Billing Dashboard ─────────────────────────────────────── -->
+<section id="billing">
+  <div class="section-icon-title">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+    <h2 class="section-title">计费仪表板</h2>
+  </div>
+  <div class="billing-grid">
+    <!-- Ring card -->
+    <div class="glass-card billing-ring-card">
+      <div class="ring-wrap">
+        <svg id="ring-svg" width="184" height="184" style="transform:rotate(-90deg)">
+          <defs>
+            <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#4fc3f7"/>
+              <stop offset="100%" stop-color="#00e5ff"/>
+            </linearGradient>
+          </defs>
+          <circle id="ring-track" cx="92" cy="92" r="80" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="14"/>
+          <circle id="ring-fill" cx="92" cy="92" r="80" fill="none" stroke="url(#ringGrad)" stroke-width="14"
+                  stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(0,229,255,.55));transition:stroke-dasharray .8s cubic-bezier(.25,.46,.45,.94)"/>
+        </svg>
+        <div class="ring-center">
+          <span class="ring-center-top">可用余额</span>
+          <span class="ring-center-main" id="ring-amount">¥128</span>
+          <span class="ring-center-sub" id="ring-sub">约可用 257 次</span>
+        </div>
+      </div>
+      <div class="ring-meta">
+        <span><b id="ring-spent">¥372</b> 已消费</span>
+        <span><b style="color:var(--accent)">¥500</b> 周期额度</span>
+      </div>
+    </div>
+    <!-- Right panel -->
+    <div style="display:grid;gap:var(--grid-gap);grid-template-columns:1fr 1fr">
+      <div class="glass-card" style="padding:22px">
+        <div class="subhead">
+          <svg class="subhead-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m18 17-5-5-4 4-3-3"/></svg>
+          <span class="subhead-title">按工具用量</span>
+          <span class="subhead-sub">今日 · ¥</span>
+        </div>
+        <div class="bar-chart" id="bar-chart"></div>
+      </div>
+      <div class="glass-card" style="padding:22px;display:flex;flex-direction:column">
+        <div class="subhead">
+          <svg class="subhead-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><path d="M16 8H8"/><path d="M16 12H8"/><path d="M12 16H8"/></svg>
+          <span class="subhead-title">最近消费</span>
+          <span class="subhead-sub">实时</span>
+        </div>
+        <div class="txn-list" id="txn-list"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="sgEf" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse"><stop stop-color="#4fc3f7"/><stop offset="1" stop-color="#00e5ff"/></linearGradient><linearGradient id="sgWf" x1="10" y1="24" x2="38" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4fc3f7"/><stop offset="1" stop-color="#00e5ff"/></linearGradient></defs>
+        <rect x="9.5" y="9.5" width="29" height="29" rx="8" transform="rotate(45 24 24)" stroke="url(#sgEf)" stroke-width="1.6" opacity="0.55"/>
+        <rect x="13" y="13" width="22" height="22" rx="6" transform="rotate(45 24 24)" stroke="url(#sgEf)" stroke-width="2"/>
+        <path d="M13 24 H19 L21.5 17 L26.5 31 L29 24 H35" stroke="url(#sgWf)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span style="font-family:var(--font-display);font-weight:600;font-size:14px">Sagaway Lab</span>
+    </div>
+    <div class="footer-links">
+      <a href="#">API 文档</a>
+      <a href="#">计费说明</a>
+      <a href="#">企业版询价</a>
+      <a href="#">服务状态</a>
+    </div>
+    <span class="footer-copy">© 2026 Sagaway Lab · 余额永久有效，按调用实时扣费</span>
+  </div>
+</footer>
+
+<!-- ── Recharge Modal ──────────────────────────────────────────── -->
+<div id="modal-overlay" role="dialog" aria-modal="true" onclick="handleOverlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">账户充值</div>
+        <div class="modal-sub">余额永久有效，按调用实时扣费</div>
+      </div>
+      <button class="modal-close" onclick="closeRecharge()" aria-label="关闭">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <span class="modal-label">支付方式</span>
+      <div class="pay-methods">
+        <button class="pay-btn active" data-method="wechat" onclick="selectMethod(this)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+          微信支付
+        </button>
+        <button class="pay-btn" data-method="alipay" onclick="selectMethod(this)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
+          支付宝
+        </button>
+        <button class="pay-btn" data-method="bank" onclick="selectMethod(this)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V12M21 22V12M12 22V12M2 12h20M12 2 2 7h20z"/></svg>
+          银行卡
+        </button>
+      </div>
+      <span class="modal-label">充值金额</span>
+      <div class="amount-presets">
+        <button class="amount-preset" onclick="selectAmount(50,this)">¥50</button>
+        <button class="amount-preset active" onclick="selectAmount(200,this)">¥200</button>
+        <button class="amount-preset" onclick="selectAmount(500,this)">¥500</button>
+      </div>
+      <div class="amount-input-wrap">
+        <span class="amount-prefix">¥</span>
+        <input class="amount-input" id="custom-amount" type="number" placeholder="自定义金额" min="1" oninput="onCustomAmount(this)"/>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost btn-md" onclick="closeRecharge()">取消</button>
+        <button class="btn btn-primary btn-md" onclick="confirmRecharge()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          确认充值
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Stack ────────────────────────────────────────────── -->
+<div id="toast-stack" aria-live="polite"></div>
+
+<script>
+/* ───── State ─────────────────────────────────────────────────── */
+let balance = 128.50;
+let todayCalls = 3284;
+let selectedAmount = 200;
+let toastId = 0;
+
+const TOOLS = [
+  {id:'xrd',name:'XRD Converter',cat:'crystallography',icon:'scan',desc:'原始衍射数据转 CIF / 标准格式，支持 Bruker RAW v1',price:.5,calls:1204,status:'online',trend:[6,7,6,9,8,11,10,13,12,15,14,18]},
+  {id:'fft',name:'FFT Spectral',cat:'signal',icon:'wave',desc:'快速傅里叶变换与频谱分析，支持加窗函数',price:.3,calls:880,status:'online',trend:[9,8,10,9,12,11,13,12,14,13,16,15]},
+  {id:'peak',name:'Peak Fitting',cat:'spectroscopy',icon:'chart',desc:'多峰高斯 / 洛伦兹拟合，输出峰位和半峰宽',price:.8,calls:542,status:'online',trend:[4,5,4,6,5,7,6,8,7,9,8,10]},
+  {id:'mw',name:'Molar Mass',cat:'chemistry',icon:'flask',desc:'分子式解析与摩尔质量计算，含同位素丰度',price:.1,calls:3120,status:'online',trend:[12,14,13,16,15,18,17,20,19,22,21,24]},
+  {id:'dsc',name:'DSC Baseline',cat:'thermal',icon:'thermo',desc:'差示扫描量热基线校正，多种算法可选',price:.6,calls:318,status:'maint',trend:[5,4,5,3,4,2,3,2,1,2,1,1]},
+  {id:'align',name:'Seq Aligner',cat:'bio',icon:'dna',desc:'蛋白 / 核酸序列比对，支持 Smith-Waterman',price:1.2,calls:209,status:'online',trend:[2,3,3,4,4,5,5,6,6,7,7,8]},
+  {id:'denoise',name:'EM Denoise',cat:'imaging',icon:'aperture',desc:'电镜图像降噪与增强，深度学习后端',price:1.5,calls:96,status:'online',trend:[1,1,2,2,3,3,4,4,5,6,7,9]},
+  {id:'sym',name:'Crystal Symmetry',cat:'crystallography',icon:'hex',desc:'空间群识别与对称性分析，基于 spglib',price:.9,calls:174,status:'online',trend:[3,3,4,3,5,4,6,5,7,6,8,7]},
+];
+
+let transactions = [
+  {id:1,tool:'Molar Mass',amount:-0.1,time:'14:32:08',credit:false},
+  {id:2,tool:'XRD Converter',amount:-0.5,time:'14:30:51',credit:false},
+  {id:3,tool:'FFT Spectral',amount:-0.3,time:'14:28:19',credit:false},
+  {id:4,tool:'充值 · 支付宝',amount:+200,time:'14:21:03',credit:true},
+  {id:5,tool:'Peak Fitting',amount:-0.8,time:'14:18:44',credit:false},
+  {id:6,tool:'Seq Aligner',amount:-1.2,time:'14:12:30',credit:false},
+];
+
+const USAGE = [
+  {label:'Molar',value:312,color:'var(--viz-1)'},
+  {label:'XRD',value:602,color:'var(--viz-2)'},
+  {label:'FFT',value:264,color:'var(--viz-3)'},
+  {label:'Peak',value:434,color:'var(--viz-4)'},
+  {label:'Align',value:251,color:'var(--viz-5)'},
+  {label:'Sym',value:157,color:'var(--viz-6)'},
+];
+
+/* ───── Icons ─────────────────────────────────────────────────── */
+const ICONS = {
+  scan:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+  wave:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 c2-4,3-4,5 0 s3 4 5 0 3-4 5 0 3 4 5 0"/></svg>`,
+  chart:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3 C4 8 6 10 9 9 14 8 16 14 21 14"/><path d="M21 3h-6v6"/></svg>`,
+  flask:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M8 3l-4 10a6 6 0 1 0 16 0L16 3"/><line x1="6" y1="14" x2="18" y2="14"/></svg>`,
+  thermo:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>`,
+  dna:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 2.002-2.518 3.999-2.807 5.997"/><path d="m2 9 3.31 1.17"/><path d="m16.69 13.83 3.31 1.17"/><path d="m2 3 3.31 1.17"/><path d="m16.69 19.83 3.31 1.17"/><path d="m22 15-3.31-1.17"/><path d="M8.31 9.83 5 8.66"/><path d="m22 21-3.31-1.17"/><path d="M8.31 15.83 5 14.66"/></svg>`,
+  aperture:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="14.31" y1="8" x2="20.05" y2="17.94"/><line x1="9.69" y1="8" x2="21.17" y2="8"/><line x1="7.38" y1="12" x2="13.12" y2="2.06"/><line x1="9.69" y1="16" x2="3.95" y2="6.06"/><line x1="14.31" y1="16" x2="2.83" y2="16"/><line x1="16.62" y1="12" x2="10.88" y2="21.94"/></svg>`,
+  hex:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>`,
+  check:`✓`,
+};
+
+/* ───── Particle Field ────────────────────────────────────────── */
+function initParticles(){
+  const canvas=document.getElementById('hero-canvas');
+  const ctx=canvas.getContext('2d');
+  let w,h,pts=[],raf;
+  const LINK=130,N=48;
+  function resize(){
+    w=canvas.clientWidth;h=canvas.clientHeight;
+    canvas.width=w*Math.min(devicePixelRatio,2);
+    canvas.height=h*Math.min(devicePixelRatio,2);
+    ctx.setTransform(Math.min(devicePixelRatio,2),0,0,Math.min(devicePixelRatio,2),0,0);
+  }
+  resize();
+  pts=Array.from({length:N},()=>({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.4+.6}));
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>w)p.vx*=-1;if(p.y<0||p.y>h)p.vy*=-1;});
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<LINK){const o=(1-d/LINK)*.5;ctx.strokeStyle=`rgba(0,229,255,${o*.48})`;ctx.lineWidth=.6;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+    }
+    pts.forEach(p=>{ctx.fillStyle='rgba(79,195,247,.85)';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+  window.addEventListener('resize',()=>{resize();});
+  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){cancelAnimationFrame(raf);}
+}
+
+/* ───── CountUp ───────────────────────────────────────────────── */
+function countUp(el,target,dur=1600,fmt=v=>v.toLocaleString()){
+  const start=performance.now();
+  function step(now){
+    const p=Math.min((now-start)/dur,1);
+    const eased=1-Math.pow(1-p,3);
+    el.textContent=fmt(Math.round(eased*target));
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ───── Sparkline SVG ─────────────────────────────────────────── */
+function sparkline(data,w=104,h=30,color='var(--cyan-fluoro)',locked=false){
+  const c=locked?'var(--text-muted)':color;
+  const max=Math.max(...data),min=Math.min(...data),range=max-min||1,pad=3;
+  const pts=data.map((d,i)=>[pad+i/(data.length-1)*(w-pad*2),pad+(1-(d-min)/range)*(h-pad*2)]);
+  const line=pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const area=`${line} L${pts[pts.length-1][0].toFixed(1)} ${h} L${pts[0][0].toFixed(1)} ${h} Z`;
+  const last=pts[pts.length-1];
+  const gid='sp'+Math.random().toString(36).slice(2,7);
+  return`<svg class="sparkline" width="${w}" height="${h}" style="overflow:visible">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${c}" stop-opacity=".3"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#${gid})"/>
+    <path d="${line}" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px rgba(0,229,255,.5))"/>
+    ${locked?'':`<circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="${c}" style="filter:drop-shadow(0 0 4px rgba(0,229,255,.9))"/>`}
+  </svg>`;
+}
+
+/* ───── Render Tool Grid ──────────────────────────────────────── */
+function renderTools(cat='all'){
+  const grid=document.getElementById('tool-grid');
+  const visible=cat==='all'?TOOLS:TOOLS.filter(t=>t.cat===cat);
+  document.getElementById('tools-count').textContent=`${visible.length} 个工具`;
+  grid.innerHTML=visible.map((t,i)=>{
+    const locked=balance<t.price;
+    const maint=t.status==='maint';
+    const disabled=locked||maint;
+    const delay=i*60;
+    const badgeHTML=locked
+      ?`<span class="badge" data-tone="error"><span class="badge-dot"></span>余额不足</span>`
+      :maint?`<span class="badge" data-tone="maint"><span class="badge-dot"></span>维护中</span>`
+      :`<span class="badge" data-tone="online"><span class="badge-dot"></span>在线</span>`;
+    return`<div class="tool-card-wrap" style="animation-delay:${delay}ms">
+      <div class="glass-card ${disabled?'locked':'interactive'}" style="height:100%">
+        <span class="card-sweep"></span>
+        <div class="tool-card ${disabled?'locked':''}">
+          <div class="tool-card-top">
+            <div class="tool-icon ${disabled?'locked':''}">${ICONS[t.icon]||ICONS.scan}</div>
+            ${badgeHTML}
+          </div>
+          <div>
+            <div class="tool-name">${t.name}</div>
+            <div class="tool-desc">${t.desc}</div>
+          </div>
+          <div class="tool-footer">
+            <div class="tool-trend">
+              <div class="tool-calls">今日 ${t.calls.toLocaleString()} 次</div>
+              ${sparkline(t.trend,104,30,'var(--cyan-fluoro)',disabled)}
+            </div>
+            <span class="badge" data-tone="accent" style="font-size:12px;font-weight:600">¥${t.price.toFixed(1)}</span>
+          </div>
+          <button class="btn btn-secondary use-btn" onclick="handleUse('${t.id}')" ${disabled?'disabled':''}>
+            ${locked?'充值后使用':maint?'维护中':'立即使用'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ───── Handle Use ────────────────────────────────────────────── */
+function handleUse(id){
+  const tool=TOOLS.find(t=>t.id===id);
+  if(!tool)return;
+  if(balance<tool.price){openRecharge();return;}
+  balance=parseFloat((balance-tool.price).toFixed(2));
+  todayCalls++;
+  const now=new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  transactions=[{id:Date.now(),tool:tool.name,amount:-tool.price,time:now,credit:false},...transactions].slice(0,6);
+  updateBalance();
+  renderTools(document.querySelector('.cat-btn.active').dataset.cat);
+  renderTransactions();
+  pushToast({amount:`−¥${tool.price.toFixed(2)}`,title:`${tool.name} 调用完成`,tone:'debit'});
+}
+
+/* ───── Balance UI ────────────────────────────────────────────── */
+function updateBalance(){
+  const el=document.getElementById('nav-balance');
+  const low=balance<20;
+  el.textContent=`¥${balance.toFixed(2)}`;
+  el.classList.toggle('low',low);
+  document.getElementById('nav-balance-sub').textContent=`约可用 ${Math.floor(balance/.5)} 次`;
+  document.getElementById('nav-calls').textContent=todayCalls.toLocaleString();
+  // Ring
+  const cap=500,frac=Math.max(.04,Math.min(1,balance/cap));
+  const r=80,circ=2*Math.PI*r,dash=circ*frac;
+  document.getElementById('ring-fill').style.strokeDasharray=`${dash} ${circ}`;
+  document.getElementById('ring-amount').textContent=`¥${Math.round(balance)}`;
+  document.getElementById('ring-sub').textContent=`约可用 ${Math.floor(balance/.5)} 次`;
+  document.getElementById('ring-spent').textContent=`¥${(cap-balance).toFixed(0)}`;
+}
+
+/* ───── Transactions ──────────────────────────────────────────── */
+function renderTransactions(){
+  const el=document.getElementById('txn-list');
+  el.innerHTML=transactions.map(t=>`
+    <div class="txn-item">
+      <div class="txn-dot ${t.credit?'credit':'debit'}"></div>
+      <div class="txn-info">
+        <div class="txn-tool">${t.tool}</div>
+        <div class="txn-time">${t.time}</div>
+      </div>
+      <div class="txn-amount ${t.credit?'credit':'debit'}">${t.amount>0?'+':''}¥${Math.abs(t.amount).toFixed(t.credit?0:2)}</div>
+    </div>`).join('');
+}
+
+/* ───── Bar Chart ─────────────────────────────────────────────── */
+function renderBarChart(){
+  const max=Math.max(...USAGE.map(u=>u.value));
+  document.getElementById('bar-chart').innerHTML=USAGE.map(u=>`
+    <div class="bar-row">
+      <span class="bar-label">${u.label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:0%;background:${u.color}" data-w="${(u.value/max*100).toFixed(1)}"></div></div>
+      <span class="bar-val">${u.value}</span>
+    </div>`).join('');
+  setTimeout(()=>document.querySelectorAll('.bar-fill').forEach(el=>{el.style.width=el.dataset.w+'%'}),100);
+}
+
+/* ───── Ring Init ─────────────────────────────────────────────── */
+function initRing(){
+  const r=80,circ=2*Math.PI*r;
+  document.getElementById('ring-track').setAttribute('stroke-dasharray',`${circ} ${circ}`);
+  const cap=500,frac=Math.max(.04,Math.min(1,balance/cap)),dash=circ*frac;
+  const fill=document.getElementById('ring-fill');
+  fill.setAttribute('stroke-dasharray',`0 ${circ}`);
+  setTimeout(()=>{fill.style.strokeDasharray=`${dash} ${circ}`;},200);
+}
+
+/* ───── Category Filter ───────────────────────────────────────── */
+document.getElementById('nav-cats').addEventListener('click',e=>{
+  const btn=e.target.closest('.cat-btn');
+  if(!btn)return;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTools(btn.dataset.cat);
+});
+
+/* ───── Recharge Modal ────────────────────────────────────────── */
+function openRecharge(){
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeRecharge(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function handleOverlayClick(e){if(e.target===e.currentTarget)closeRecharge();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRecharge();});
+
+function selectMethod(btn){
+  document.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function selectAmount(amt,btn){
+  selectedAmount=amt;
+  document.getElementById('custom-amount').value='';
+  document.querySelectorAll('.amount-preset').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function onCustomAmount(inp){
+  selectedAmount=parseFloat(inp.value)||0;
+  document.querySelectorAll('.amount-preset').forEach(b=>b.classList.remove('active'));
+}
+function confirmRecharge(){
+  const amt=selectedAmount;
+  if(amt<=0)return;
+  balance=parseFloat((balance+amt).toFixed(2));
+  const now=new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  const method=document.querySelector('.pay-btn.active')?.dataset.method||'wechat';
+  const methodLabel={'wechat':'微信支付','alipay':'支付宝','bank':'银行卡'}[method]||'在线支付';
+  transactions=[{id:Date.now(),tool:`充值 · ${methodLabel}`,amount:+amt,time:now,credit:true},...transactions].slice(0,6);
+  updateBalance();
+  renderTools(document.querySelector('.cat-btn.active').dataset.cat);
+  renderTransactions();
+  closeRecharge();
+  pushToast({amount:`+¥${amt.toFixed(2)}`,title:'充值成功',tone:'success'});
+}
+
+/* ───── Toast ─────────────────────────────────────────────────── */
+function pushToast({amount,title,tone='debit'}){
+  const id=++toastId;
+  const stack=document.getElementById('toast-stack');
+  const el=document.createElement('div');
+  el.className='toast';el.dataset.tone=tone;
+  const icon=tone==='success'?'✓':tone==='error'?'✕':'↯';
+  el.innerHTML=`<div class="toast-icon">${icon}</div><div class="toast-body">${amount!=null?`<div class="toast-amount">${amount}</div>`:''}<div class="toast-title">${title}</div></div>`;
+  stack.appendChild(el);
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),300);},2700);
+}
+
+/* ───── Init ──────────────────────────────────────────────────── */
+window.addEventListener('load',()=>{
+  initParticles();
+  initRing();
+  renderTools();
+  renderBarChart();
+  renderTransactions();
+  countUp(document.getElementById('ctr-calcs'),2847193);
+  countUp(document.getElementById('ctr-hours'),18420);
+  updateBalance();
+
+  // Stagger hero counters
+  document.querySelectorAll('.hero-counter').forEach((el,i)=>{
+    el.style.animationDelay=`${i*80+200}ms`;
+  });
+
+  // IntersectionObserver for billing rise
+  const io=new IntersectionObserver(entries=>entries.forEach(e=>{
+    if(e.isIntersecting){e.target.style.animation='saga-rise var(--dur-slow) var(--ease-out) both';io.unobserve(e.target);}
+  }),{threshold:.1});
+  document.querySelectorAll('.glass-card').forEach(el=>io.observe(el));
+});
+</script>
+</body>
+</html>
