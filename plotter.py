@@ -181,7 +181,10 @@ def make_stacked_figure(
             # span is exactly y.max() because y.min() == 0 after the shift above
             cur += float(y.max()) * offset_factor
 
-        # ── Plot curves ───────────────────────────────────────────────────────
+        # ── Plot curves + labels ──────────────────────────────────────────────
+        # Label strategy: anchor at the TOP of each curve's data range.
+        # With va="bottom" the text sits just ABOVE the curve peak, in the
+        # gap between consecutive stacked curves — never overlapping the data.
         for d, y, offset in zip(datasets, ys_proc, offsets):
             x = d["x"]
             lc = d.get("color", "black")
@@ -191,23 +194,24 @@ def make_stacked_figure(
             ax.plot(x, y + offset, color=lc, linewidth=line_width)
 
             if name:
-                try:
-                    idx = int(np.clip(np.searchsorted(x, label_x), 0, len(y) - 1))
-                    y_pos = float((y + offset)[idx]) + float(y.max() - y.min()) * 0.05
-                except Exception:
-                    y_pos = offset + float(y.max()) * 0.5
-
+                # Place label just above the curve's maximum (not at a specific x)
+                y_peak = offset + float(y.max())
+                y_gap  = float(y.max()) * 0.04   # 4 % gap between curve top and text
                 ax.text(
-                    label_x, y_pos, _safe_text(name),
-                    ha="right", va="bottom",   # right-anchor: text grows leftward, never exits frame
+                    label_x, y_peak + y_gap, _safe_text(name),
+                    ha="right", va="bottom",
                     fontsize=label_fontsize,
                     color=tc,
                     fontfamily=generic_family,
-                    clip_on=True,              # hard clip at axes boundary as safety net
+                    clip_on=False,          # allow label above top spine if barely over
                 )
 
         # ── Axes styling ──────────────────────────────────────────────────────
         ax.set_xlim(x_min, x_max)
+
+        # y-axis upper limit: top of highest curve + headroom for its label
+        top = offsets[-1] + float(ys_proc[-1].max())
+        ax.set_ylim(bottom=0, top=top * 1.15)   # 15 % head-room keeps top label inside
 
         # All 4 spines visible (complete box), uniform weight
         for spine in ax.spines.values():
