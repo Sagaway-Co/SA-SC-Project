@@ -1,5 +1,6 @@
 import io
 import os
+import struct
 import sys
 import tempfile
 import warnings
@@ -7,202 +8,296 @@ import warnings
 import plotly.graph_objects as go
 import streamlit as st
 
+sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "cif2txt"))
+
 from bruker_raw import read_raw, write_raw
 from xrd_sim import WAVELENGTHS, simulate
+from plotter import (
+    FONT_NAMES,
+    load_txt,
+    make_plotly_preview,
+    make_stacked_figure,
+)
 
-st.set_page_config(page_title="CIF → RAW → TXT", layout="wide")
-st.title("CIF → RAW → TXT 粉末衍射转换器")
+st.set_page_config(page_title="CIF → RAW → TXT | XRD Plotter", layout="wide")
+st.title("XRD 粉末衍射工具箱")
 
-# ── Sidebar: parameters ───────────────────────────────────────────────────────
-with st.sidebar:
-    st.header("模拟参数")
+tab_convert, tab_plot = st.tabs(["⚗️ CIF → RAW → TXT 转换", "📊 XRD 堆积图"])
 
-    source_choice = st.selectbox(
-        "X 射线源",
-        options=["自定义波长"] + list(WAVELENGTHS.keys()),
-        index=1,
-    )
-    if source_choice == "自定义波长":
-        wavelength = st.number_input("波长 (Å)", value=1.54056, format="%.5f")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Tab 1 – CIF conversion
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab_convert:
+    with st.sidebar:
+        st.header("模拟参数")
+
+        source_choice = st.selectbox(
+            "X 射线源",
+            options=["自定义波长"] + list(WAVELENGTHS.keys()),
+            index=1,
+        )
+        if source_choice == "自定义波长":
+            wavelength = st.number_input("波长 (Å)", value=1.54056, format="%.5f")
+        else:
+            wavelength = WAVELENGTHS[source_choice]
+            st.info(f"λ = {wavelength} Å")
+
+        col1, col2 = st.columns(2)
+        two_theta_start = col1.number_input("2θ 起点 (°)", value=5.0, step=1.0)
+        two_theta_end = col2.number_input("2θ 终点 (°)", value=50.0, step=1.0)
+        step = st.number_input("步长 (°)", value=0.02, step=0.01, format="%.3f")
+        fwhm = st.number_input("峰宽 FWHM (°)", value=0.1, step=0.01, format="%.3f")
+        scale = st.number_input("最大强度归一化值", value=10000.0, step=1000.0)
+
+    uploaded = st.file_uploader("上传 CIF 文件", type=["cif"])
+
+    if not uploaded:
+        st.info("请上传一个 CIF 文件开始转换。")
     else:
-        wavelength = WAVELENGTHS[source_choice]
-        st.info(f"λ = {wavelength} Å")
+        run_btn = st.button("开始转换", type="primary")
 
-    col1, col2 = st.columns(2)
-    two_theta_start = col1.number_input("2θ 起点 (°)", value=5.0, step=1.0)
-    two_theta_end = col2.number_input("2θ 终点 (°)", value=50.0, step=1.0)
-    step = st.number_input("步长 (°)", value=0.02, step=0.01, format="%.3f")
-    fwhm = st.number_input("峰宽 FWHM (°)", value=0.1, step=0.01, format="%.3f")
-    scale = st.number_input("最大强度归一化值", value=10000.0, step=1000.0)
+        if "conv_result" not in st.session_state:
+            st.session_state.conv_result = None
 
-# ── Upload ────────────────────────────────────────────────────────────────────
-uploaded = st.file_uploader("上传 CIF 文件", type=["cif"])
+        if run_btn:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                cif_path = os.path.join(tmpdir, uploaded.name)
+                with open(cif_path, "wb") as f:
+                    f.write(uploaded.getvalue())
 
-if not uploaded:
-    st.info("请上传一个 CIF 文件开始转换。")
-    st.stop()
+                status = st.status("正在模拟 XRD 图谱…", expanded=True)
+                warnings_log = []
 
-# ── Run pipeline ──────────────────────────────────────────────────────────────
-run_btn = st.button("开始转换", type="primary")
+                try:
+                    with warnings.catch_warnings(record=True) as caught:
+                        warnings.simplefilter("always")
+                        two_theta, intensity = simulate(
+                            cif_path,
+                            wavelength=wavelength,
+                            two_theta_start=two_theta_start,
+                            two_theta_end=two_theta_end,
+                            step=step,
+                            fwhm=fwhm,
+                            scale=scale,
+                        )
+                    for w in caught:
+                        warnings_log.append(str(w.message))
+                except Exception as e:
+                    status.update(label="模拟失败", state="error")
+                    st.error(f"转换失败：{e}")
+                    st.stop()
 
-if "result" not in st.session_state:
-    st.session_state.result = None
-if "cif_name" not in st.session_state:
-    st.session_state.cif_name = None
+                raw_path = os.path.join(tmpdir, "pattern.raw")
+                write_raw(list(two_theta), list(intensity), wavelength, raw_path)
+                with open(raw_path, "rb") as f:
+                    raw_bytes = f.read()
 
-if run_btn:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cif_path = os.path.join(tmpdir, uploaded.name)
-        with open(cif_path, "wb") as f:
-            f.write(uploaded.getvalue())
+                txt_lines = [f"{t:.4f}  {i:.4f}\n" for t, i in zip(two_theta, intensity)]
+                txt_bytes = "".join(txt_lines).encode()
 
-        status = st.status("正在模拟 XRD 图谱…", expanded=True)
-        warnings_log = []
+                status.update(label="转换完成 ✓", state="complete")
+                stem = os.path.splitext(uploaded.name)[0]
+                st.session_state.conv_result = {
+                    "two_theta": list(two_theta),
+                    "intensity": list(intensity),
+                    "raw_bytes": raw_bytes,
+                    "txt_bytes": txt_bytes,
+                    "warnings": warnings_log,
+                    "stem": stem,
+                }
 
-        # Capture warnings
-        import logging
-        log_stream = io.StringIO()
-        handler = logging.StreamHandler(log_stream)
-        logging.getLogger().addHandler(handler)
+        res = st.session_state.conv_result
+        if res:
+            if res["warnings"]:
+                with st.expander("⚠️ 精度警告（使用了 gemmi fallback）", expanded=True):
+                    st.warning(
+                        "该 CIF 结构复杂或含无序原子，pymatgen 对称分析失败，已切换到 gemmi 引擎。\n"
+                        "**峰位置精确，相对强度可能与 Mercury 有差异，请对照 Mercury 验证。**"
+                    )
 
-        try:
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
-                two_theta, intensity = simulate(
-                    cif_path,
-                    wavelength=wavelength,
-                    two_theta_start=two_theta_start,
-                    two_theta_end=two_theta_end,
-                    step=step,
-                    fwhm=fwhm,
-                    scale=scale,
+            tab_p, tab_r, tab_t = st.tabs(["📈 衍射图谱", "📦 RAW 文件", "📄 TXT 文件"])
+
+            with tab_p:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=res["two_theta"], y=res["intensity"],
+                    mode="lines", line=dict(color="#2563eb", width=1),
+                ))
+                fig.update_layout(
+                    xaxis_title="2θ (°)", yaxis_title="强度 (相对)",
+                    hovermode="x unified", height=420,
+                    margin=dict(l=60, r=20, t=20, b=60),
                 )
-            for w in caught_warnings:
-                warnings_log.append(str(w.message))
-        except Exception as e:
-            status.update(label="模拟失败", state="error")
-            st.error(f"转换失败：{e}")
-            st.stop()
-        finally:
-            logging.getLogger().removeHandler(handler)
+                st.plotly_chart(fig, use_container_width=True)
+                c1, c2, c3 = st.columns(3)
+                c1.metric("数据点数", len(res["two_theta"]))
+                c2.metric("2θ 范围", f"{res['two_theta'][0]:.2f}°–{res['two_theta'][-1]:.2f}°")
+                c3.metric("最大强度", f"{max(res['intensity']):.0f}")
 
-        # Build RAW bytes in memory
-        raw_buf = io.BytesIO()
-        raw_path = os.path.join(tmpdir, "pattern.raw")
-        write_raw(list(two_theta), list(intensity), wavelength, raw_path)
-        with open(raw_path, "rb") as f:
-            raw_bytes = f.read()
+            with tab_r:
+                st.caption("Bruker RAW v1 二进制格式（与 Mercury 导出格式相同），可直接在 JADE 中打开。")
+                c1, c2 = st.columns([1, 2])
+                c1.metric("文件大小", f"{len(res['raw_bytes'])} bytes")
+                c1.download_button("⬇ 下载 .raw", res["raw_bytes"],
+                                   file_name=res["stem"] + ".raw",
+                                   mime="application/octet-stream")
+                with c2:
+                    st.caption("文件头（前 32 bytes，hex）")
+                    st.code(" ".join(f"{b:02x}" for b in res["raw_bytes"][:32]), language=None)
+                    wl = struct.unpack_from("<d", res["raw_bytes"], 0x270)[0]
+                    n  = struct.unpack_from("<i", res["raw_bytes"], 0x2CC)[0]
+                    s  = struct.unpack_from("<d", res["raw_bytes"], 0x2D8)[0]
+                    st_sz = struct.unpack_from("<d", res["raw_bytes"], 0x378)[0]
+                    st.code(f"wavelength : {wl:.5f} Å\n"
+                            f"2θ start   : {s:.4f}°\n"
+                            f"step       : {st_sz:.4f}°\n"
+                            f"n_steps    : {n}", language=None)
 
-        # Build TXT bytes in memory
-        txt_lines = [f"{t:.4f}  {i:.4f}\n" for t, i in zip(two_theta, intensity)]
-        txt_bytes = "".join(txt_lines).encode()
+            with tab_t:
+                st.caption("两列格式（2θ  强度），可直接导入 Excel 或送入堆积图 Tab。")
+                c1, c2 = st.columns([1, 2])
+                c1.metric("行数", len(res["two_theta"]))
+                c1.download_button("⬇ 下载 .txt", res["txt_bytes"],
+                                   file_name=res["stem"] + ".txt",
+                                   mime="text/plain")
+                with c2:
+                    lines = res["txt_bytes"].decode().splitlines()
+                    preview = "\n".join(lines[:20]) + f"\n… (共 {len(lines)} 行)"
+                    st.code(preview, language=None)
 
-        status.update(label="转换完成 ✓", state="complete")
 
-        st.session_state.result = {
-            "two_theta": list(two_theta),
-            "intensity": list(intensity),
-            "raw_bytes": raw_bytes,
-            "txt_bytes": txt_bytes,
-            "warnings": warnings_log,
-            "stem": os.path.splitext(uploaded.name)[0],
-        }
-        st.session_state.cif_name = uploaded.name
-
-# ── Display results ───────────────────────────────────────────────────────────
-res = st.session_state.result
-if res is None:
-    st.stop()
-
-if res["warnings"]:
-    with st.expander("⚠️ 精度警告（使用了 gemmi fallback）", expanded=True):
-        st.warning(
-            "该 CIF 结构复杂或含无序原子，pymatgen 对称分析失败，已切换到 gemmi 引擎。\n"
-            "**峰位置精确，相对强度可能与 Mercury 有差异，请对照 Mercury 验证。**"
-        )
-        for w in res["warnings"]:
-            st.caption(w)
-
-tab_plot, tab_raw, tab_txt = st.tabs(["📈 衍射图谱", "📦 RAW 文件", "📄 TXT 文件"])
-
-# ── Tab 1: plot ───────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Tab 2 – Stacked XRD plotter
+# ═══════════════════════════════════════════════════════════════════════════════
 with tab_plot:
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=res["two_theta"],
-        y=res["intensity"],
-        mode="lines",
-        line=dict(color="#2563eb", width=1),
-        name="强度",
-    ))
-    fig.update_layout(
-        xaxis_title="2θ (°)",
-        yaxis_title="强度 (相对)",
-        hovermode="x unified",
-        height=450,
-        margin=dict(l=60, r=20, t=20, b=60),
-    )
-    st.plotly_chart(fig, use_container_width=True)
 
-    col_a, col_b, col_c = st.columns(3)
-    col_a.metric("数据点数", len(res["two_theta"]))
-    col_b.metric("2θ 范围", f"{res['two_theta'][0]:.2f}° – {res['two_theta'][-1]:.2f}°")
-    col_c.metric("最大强度", f"{max(res['intensity']):.0f}")
+    # ── Session state init ──────────────────────────────────────────────────
+    if "datasets" not in st.session_state:
+        st.session_state.datasets = []   # list of {name, x, y, color}
 
-# ── Tab 2: RAW ────────────────────────────────────────────────────────────────
-with tab_raw:
-    st.caption(
-        "Bruker RAW v1 二进制格式（与 Mercury 导出格式相同），可直接在 JADE 中打开。"
-    )
-    col1, col2 = st.columns([1, 2])
-    col1.metric("文件大小", f"{len(res['raw_bytes'])} bytes")
-    col1.metric(
-        "格式",
-        "Bruker RAW v1",
-        help="magic: RAW1.01 — 与 CCDC/Mercury 导出完全兼容",
-    )
-    col1.download_button(
-        label="⬇ 下载 .raw 文件",
-        data=res["raw_bytes"],
-        file_name=res["stem"] + ".raw",
-        mime="application/octet-stream",
+    # ── File upload ─────────────────────────────────────────────────────────
+    uploaded_files = st.file_uploader(
+        "上传 TXT 文件（每个文件一条曲线，两列：2θ  强度）",
+        type=["txt", "xy", "dat", "csv"],
+        accept_multiple_files=True,
+        key="plotter_upload",
     )
 
-    # Show hex preview
-    with col2:
-        st.caption("文件头（前 32 bytes，hex）")
-        hex_preview = " ".join(f"{b:02x}" for b in res["raw_bytes"][:32])
-        st.code(hex_preview, language=None)
+    DEFAULT_COLORS = [
+        "#000000", "#e41a1c", "#377eb8", "#4daf4a",
+        "#984ea3", "#ff7f00", "#a65628", "#f781bf",
+    ]
 
-        # Show first few data points decoded
-        import struct
-        n = struct.unpack_from("<i", res["raw_bytes"], 0x2CC)[0]
-        start_v = struct.unpack_from("<d", res["raw_bytes"], 0x2D8)[0]
-        step_v = struct.unpack_from("<d", res["raw_bytes"], 0x378)[0]
-        wl_v = struct.unpack_from("<d", res["raw_bytes"], 0x270)[0]
-        st.caption("RAW 头信息")
-        st.code(
-            f"wavelength : {wl_v:.5f} Å\n"
-            f"2θ start   : {start_v:.4f}°\n"
-            f"step       : {step_v:.4f}°\n"
-            f"n_steps    : {n}",
-            language=None,
-        )
+    if uploaded_files:
+        existing_names = {d["name"] for d in st.session_state.datasets}
+        for f in uploaded_files:
+            if f.name not in existing_names:
+                try:
+                    x, y = load_txt(f.read())
+                    if len(x) > 0:
+                        idx = len(st.session_state.datasets)
+                        st.session_state.datasets.append({
+                            "name": os.path.splitext(f.name)[0],
+                            "x": x,
+                            "y": y,
+                            "color": DEFAULT_COLORS[idx % len(DEFAULT_COLORS)],
+                        })
+                except Exception as e:
+                    st.warning(f"无法解析 {f.name}: {e}")
 
-# ── Tab 3: TXT ────────────────────────────────────────────────────────────────
-with tab_txt:
-    st.caption("两列格式（2θ  强度），与 JADE 导出格式一致，可直接导入 Excel。")
-    col1, col2 = st.columns([1, 2])
-    col1.metric("行数", len(res["two_theta"]))
-    col1.metric("文件大小", f"{len(res['txt_bytes'])} bytes")
-    col1.download_button(
-        label="⬇ 下载 .txt 文件",
-        data=res["txt_bytes"],
-        file_name=res["stem"] + ".txt",
-        mime="text/plain",
-    )
-    with col2:
-        preview_lines = res["txt_bytes"].decode().splitlines()
-        preview = "\n".join(preview_lines[:20]) + f"\n… (共 {len(preview_lines)} 行)"
-        st.code(preview, language=None)
+    # ── Dataset table ────────────────────────────────────────────────────────
+    if st.session_state.datasets:
+        st.markdown("#### 数据集管理（从下到上排列，第 1 个在底部）")
+
+        to_delete = []
+        for i, d in enumerate(st.session_state.datasets):
+            c_idx, c_name, c_color, c_pts, c_del = st.columns([0.4, 2, 0.8, 0.8, 0.4])
+            c_idx.markdown(f"**{i + 1}**")
+            new_name = c_name.text_input("名称", value=d["name"],
+                                         key=f"name_{i}", label_visibility="collapsed")
+            new_color = c_color.color_picker("颜色", value=d["color"],
+                                             key=f"color_{i}", label_visibility="collapsed")
+            c_pts.caption(f"{len(d['x'])} 点")
+            if c_del.button("✕", key=f"del_{i}"):
+                to_delete.append(i)
+
+            st.session_state.datasets[i]["name"] = new_name
+            st.session_state.datasets[i]["color"] = new_color
+
+        for i in reversed(to_delete):
+            st.session_state.datasets.pop(i)
+
+        if st.button("清空所有数据集", type="secondary"):
+            st.session_state.datasets = []
+            st.rerun()
+
+        st.divider()
+
+        # ── Plot settings ─────────────────────────────────────────────────
+        st.markdown("#### 图形设置")
+
+        sc1, sc2, sc3 = st.columns(3)
+
+        with sc1:
+            x_label = st.text_input("X 轴标签", value="2θ (degree)")
+            y_label = st.text_input("Y 轴标签", value="Intensity (a.u.)")
+
+        with sc2:
+            font_name = st.selectbox("字体", FONT_NAMES, index=0)
+            font_size = st.slider("字号", 8, 24, 16)
+
+        with sc3:
+            offset_factor = st.slider("曲线间距系数", 0.5, 3.0, 1.1, 0.1)
+            line_width = st.slider("线宽", 0.5, 3.0, 1.0, 0.1)
+            col_fw, col_fh = st.columns(2)
+            fig_w = col_fw.number_input("图宽 (inch)", 4.0, 20.0, 8.0, 0.5)
+            fig_h = col_fh.number_input("图高 (inch)", 4.0, 30.0, 10.0, 0.5)
+
+        adv = st.expander("高级设置")
+        with adv:
+            dpi = st.select_slider("输出分辨率 (DPI)", [150, 200, 300, 600], value=300)
+            label_x_frac = st.slider("标签 X 位置（0=左 1=右）", 0.0, 1.0, 0.82, 0.01)
+
+        # ── Generate ─────────────────────────────────────────────────────
+        if st.button("生成堆积图", type="primary"):
+            datasets_for_plot = [
+                {"x": d["x"], "y": d["y"], "name": d["name"], "color": d["color"]}
+                for d in st.session_state.datasets
+            ]
+
+            # Interactive preview (plotly)
+            preview_fig = make_plotly_preview(
+                datasets_for_plot, x_label=x_label, y_label=y_label,
+                offset_factor=offset_factor,
+            )
+            st.plotly_chart(preview_fig, use_container_width=True)
+
+            # Publication figure (matplotlib)
+            with st.spinner("正在渲染高分辨率图…"):
+                try:
+                    png_bytes = make_stacked_figure(
+                        datasets_for_plot,
+                        x_label=x_label,
+                        y_label=y_label,
+                        font_name=font_name,
+                        font_size=font_size,
+                        fig_width=fig_w,
+                        fig_height=fig_h,
+                        offset_factor=offset_factor,
+                        line_width=line_width,
+                        dpi=dpi,
+                        label_x_frac=label_x_frac,
+                    )
+                    st.image(png_bytes, caption="预览（PNG）", use_container_width=True)
+                    st.download_button(
+                        "⬇ 下载高分辨率 PNG",
+                        data=png_bytes,
+                        file_name="xrd_stacked.png",
+                        mime="image/png",
+                    )
+                except Exception as e:
+                    st.error(f"图形生成失败：{e}")
+    else:
+        st.info("请先上传至少一个 TXT 文件（来自 CIF 转换 Tab 或其他来源）。")
