@@ -272,15 +272,27 @@ with tab_plot:
                                   help="开启后每条曲线独立归一化到 [0,1]，量级不同的数据也能整齐堆叠")
             offset_factor = st.slider("曲线间距系数", 0.5, 3.0, 1.1, 0.1)
             line_width = st.slider("线宽 (pt)", 0.3, 3.0, 1.0, 0.1)
-            col_fw, col_fh = st.columns(2)
-            fig_w = col_fw.number_input("图宽 (inch)", 4.0, 20.0, 8.0, 0.5)
-            fig_h = col_fh.number_input("图高 (inch)", 4.0, 30.0, 10.0, 0.5)
+            fig_w = st.number_input("图宽 (inch)", 4.0, 20.0, 10.0, 0.5)
+
+            # Target landscape ratio 1.42:1 (matching Origin reference 3390×2380)
+            # height grows slightly with more curves but stays landscape
+            n = len(st.session_state.datasets) or 1
+            auto_h = round(fig_w / 1.42 + (n - 3) * 0.5, 1)
+            auto_h = max(3.5, auto_h)
+            auto_h = st.number_input("图高 (inch，自动推荐)", 3.0, 20.0,
+                                     float(auto_h), 0.5,
+                                     help=f"横向比例 1.42:1，当前 {n} 条曲线推荐 {auto_h} inch")
+            fig_h = auto_h
 
         adv = st.expander("高级设置")
         with adv:
             dpi = st.select_slider("输出分辨率 (DPI)", [150, 200, 300, 600], value=300)
             label_x_frac = st.slider("标签 X 位置（0=左 1=右）", 0.0, 1.0, 0.97, 0.01,
                                      help="1.0=右框边，文字向左延伸，永远在框内")
+            # Show actual output pixel size
+            px_w = int(fig_w * dpi)
+            px_h = int(fig_h * dpi)
+            st.info(f"输出尺寸：{px_w} × {px_h} px  （{fig_w} × {fig_h} inch @ {dpi} DPI）")
 
         # ── Generate ─────────────────────────────────────────────────────
         if st.button("生成堆积图", type="primary"):
