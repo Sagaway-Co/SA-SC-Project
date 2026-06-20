@@ -262,13 +262,16 @@ with tab_plot:
 
         with sc2:
             font_name = st.selectbox("字体", FONT_NAMES, index=0)
-            font_size = st.slider("字号", 8, 24, 16)
+            st.caption("字号（Origin 规范：轴名 30 / 刻度 26 / 标签 22）")
+            axis_fontsize  = st.slider("轴名字号",    12, 40, 30)
+            tick_fontsize  = st.slider("刻度字号",    12, 40, 26)
+            label_fontsize = st.slider("曲线标签字号", 10, 36, 22)
 
         with sc3:
             normalize = st.toggle("各曲线归一化 (0–1)", value=True,
                                   help="开启后每条曲线独立归一化到 [0,1]，量级不同的数据也能整齐堆叠")
             offset_factor = st.slider("曲线间距系数", 0.5, 3.0, 1.1, 0.1)
-            line_width = st.slider("线宽", 0.5, 3.0, 1.0, 0.1)
+            line_width = st.slider("线宽 (pt)", 0.3, 3.0, 1.0, 0.1)
             col_fw, col_fh = st.columns(2)
             fig_w = col_fw.number_input("图宽 (inch)", 4.0, 20.0, 8.0, 0.5)
             fig_h = col_fh.number_input("图高 (inch)", 4.0, 30.0, 10.0, 0.5)
@@ -304,7 +307,9 @@ with tab_plot:
                         x_label=x_label,
                         y_label=y_label,
                         font_name=font_name,
-                        font_size=font_size,
+                        axis_fontsize=axis_fontsize,
+                        tick_fontsize=tick_fontsize,
+                        label_fontsize=label_fontsize,
                         fig_width=fig_w,
                         fig_height=fig_h,
                         offset_factor=offset_factor,

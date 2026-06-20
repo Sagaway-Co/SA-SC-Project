@@ -1,6 +1,11 @@
 """
-XRD stacked pattern plotter.
-Generates publication-quality stacked plots matching Origin-style output.
+XRD stacked pattern plotter — Origin-style output.
+
+Key design decisions matched to reference image:
+- Complete 4-side box frame; ticks ONLY on bottom, pointing outward
+- Top/right/left spines visible but NO ticks
+- Font fallback list via rcParams so ℃ and other Unicode render correctly
+- Separate font sizes: axis label 30pt, tick labels 26pt, curve labels 22pt (Origin defaults)
 """
 
 import io
@@ -10,34 +15,77 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 import numpy as np
 
-# ── Font resolution ───────────────────────────────────────────────────────────
-# Each key maps to an ordered list of candidate font names (first available wins)
-_FONT_CANDIDATES = {
-    "Times New Roman": ["Times New Roman", "Liberation Serif", "DejaVu Serif"],
-    "宋体 (SimSun)":    ["SimSun", "Noto Serif CJK SC", "AR PL UMing CN", "DejaVu Serif"],
-    "仿宋 (FangSong)":  ["FangSong", "AR PL UKai CN", "Noto Serif CJK SC", "DejaVu Serif"],
-    "黑体 (SimHei)":    ["SimHei", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "DejaVu Sans"],
+# ── Font configuration ────────────────────────────────────────────────────────
+# Each entry: generic family + ordered fallback list.
+# Fallback enables ℃ (U+2103) rendering when primary font lacks the glyph.
+_FONT_CONFIG = {
+    "Times New Roman": {
+        "family": "serif",
+        "serif": [
+            "Times New Roman", "Liberation Serif",
+            "Noto Serif CJK SC", "DejaVu Serif",
+        ],
+    },
+    "宋体 (SimSun)": {
+        "family": "serif",
+        "serif": [
+            "Noto Serif CJK SC", "SimSun", "AR PL UMing CN",
+            "Liberation Serif", "DejaVu Serif",
+        ],
+    },
+    "仿宋 (FangSong)": {
+        "family": "serif",
+        "serif": [
+            "FangSong", "Noto Serif CJK SC",
+            "Liberation Serif", "DejaVu Serif",
+        ],
+    },
+    "黑体 (SimHei)": {
+        "family": "sans-serif",
+        "sans-serif": [
+            "Noto Sans CJK SC", "SimHei", "WenQuanYi Micro Hei",
+            "Hiragino Sans GB", "DejaVu Sans",
+        ],
+    },
 }
-FONT_NAMES = list(_FONT_CANDIDATES.keys())
+FONT_NAMES = list(_FONT_CONFIG.keys())
 
 
-def _resolve_font(display_name: str) -> str:
-    available = {f.name for f in fm.fontManager.ttflist}
-    for candidate in _FONT_CANDIDATES.get(display_name, ["DejaVu Serif"]):
-        if candidate in available:
-            return candidate
-    return "DejaVu Serif"
+def _safe_text(text: str) -> str:
+    """Replace Unicode compatibility chars that most fonts lack with safe equivalents."""
+    return (text
+            .replace("℃", "°C")   # ℃ → °C
+            .replace("℉", "°F")   # ℉ → °F
+            .replace("Ω", "Ω")    # Ω (ohm sign) → Ω (Greek capital omega)
+            )
+
+
+def _apply_font_rc(rc: dict, font_name: str) -> str:
+    """
+    Update rc dict with font fallback list for the given named font.
+    Returns the generic family string ('serif' or 'sans-serif') to use
+    in text/label calls so the fallback chain is respected.
+    """
+    cfg = _FONT_CONFIG.get(font_name, _FONT_CONFIG["Times New Roman"])
+    family = cfg["family"]
+    rc["font.family"] = family
+    if "serif" in cfg:
+        rc["font.serif"] = cfg["serif"]
+    if "sans-serif" in cfg:
+        rc["font.sans-serif"] = cfg["sans-serif"]
+    return family
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
 
 def load_txt(file_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
     """
-    Parse a two-column TXT file (space or tab separated, no header).
-    Returns (two_theta, intensity) as numpy arrays.
-    Skips lines that don't parse as two floats.
+    Parse a two-column TXT file.
+    Handles any whitespace separator (spaces, tabs, mixed).
+    Skips header lines and lines that don't parse as two floats.
     """
     text = file_bytes.decode("utf-8", errors="replace")
     xs, ys = [], []
@@ -51,140 +99,132 @@ def load_txt(file_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
                 xs.append(float(parts[0]))
                 ys.append(float(parts[1]))
             except ValueError:
-                continue
+                continue  # skip non-numeric header rows
     return np.array(xs), np.array(ys)
 
 
-# ── Figure generation ─────────────────────────────────────────────────────────
+# ── Publication figure ────────────────────────────────────────────────────────
 
 def make_stacked_figure(
     datasets: list[dict],
     x_label: str = "2θ (degree)",
     y_label: str = "Intensity (a.u.)",
     font_name: str = "Times New Roman",
-    font_size: int = 16,
+    axis_fontsize: int = 30,      # XY axis label — Origin default 30
+    tick_fontsize: int = 26,      # tick number labels — Origin default 26-28
+    label_fontsize: int = 22,     # per-curve text labels — Origin default 22-24
     fig_width: float = 8.0,
     fig_height: float = 10.0,
     offset_factor: float = 1.1,
-    line_width: float = 1.0,
+    line_width: float = 1.0,      # pt; Origin default is 0.5, user wants 1
     dpi: int = 300,
     label_x_frac: float = 0.82,
-    normalize: bool = True,     # normalize each curve to [0, 1] before stacking
+    normalize: bool = True,
 ) -> bytes:
-    """
-    Generate a stacked XRD pattern figure.
-
-    datasets: list of dicts, each with keys:
-        x (np.ndarray), y (np.ndarray), name (str), color (str)
-
-    Returns PNG bytes.
-    """
+    """Generate a stacked XRD pattern figure matching Origin style."""
     if not datasets:
         raise ValueError("No datasets provided")
 
-    from matplotlib.ticker import AutoMinorLocator, MultipleLocator
-
-    font_family = _resolve_font(font_name)
-    rc = {
-        "font.family":          font_family,
-        "font.size":            font_size,
-        "axes.linewidth":       1.5,
-        # x ticks — outward, both top and bottom, with minor ticks
+    rc: dict = {
+        # Ticks: ONLY on bottom, pointing outward — matches reference exactly
         "xtick.direction":      "out",
+        "xtick.bottom":         True,
+        "xtick.top":            False,   # NO mirror ticks on top spine
         "xtick.major.width":    1.5,
         "xtick.minor.width":    1.0,
         "xtick.major.size":     6,
         "xtick.minor.size":     3,
         "xtick.minor.visible":  True,
-        "xtick.top":            True,       # mirror ticks on top spine
-        # y ticks — none (stacked intensity plot)
+        "xtick.labelsize":      tick_fontsize,
+        # Y ticks: none (stacked intensity has no absolute y scale)
         "ytick.left":           False,
         "ytick.right":          False,
+        "ytick.labelsize":      tick_fontsize,
+        # Frame
+        "axes.linewidth":       1.5,
         "figure.facecolor":     "white",
         "axes.facecolor":       "white",
     }
 
+    # Apply font fallback chain so ℃ and other Unicode characters render
+    generic_family = _apply_font_rc(rc, font_name)
+    rc["font.size"] = axis_fontsize  # base size; overridden per element below
+
     with matplotlib.rc_context(rc):
         fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-        # Determine global x range
+        # ── x range ──────────────────────────────────────────────────────────
         all_x = np.concatenate([d["x"] for d in datasets])
         x_min, x_max = float(all_x.min()), float(all_x.max())
-        x_range = x_max - x_min
-        label_x = x_min + label_x_frac * x_range
+        label_x = x_min + label_x_frac * (x_max - x_min)
 
-        # Pre-process y values (normalize if requested)
-        ys_processed = []
+        # ── Normalise + compute offsets ───────────────────────────────────────
+        ys_proc = []
         for d in datasets:
             y = d["y"].astype(float)
             if normalize:
-                y_min_v, y_max_v = y.min(), y.max()
-                if y_max_v > y_min_v:
-                    y = (y - y_min_v) / (y_max_v - y_min_v)
-                else:
-                    y = np.zeros_like(y)
-            ys_processed.append(y)
+                lo, hi = y.min(), y.max()
+                y = (y - lo) / (hi - lo) if hi > lo else np.zeros_like(y)
+            ys_proc.append(y)
 
-        # Compute per-curve y offset (bottom to top = first to last)
         offsets: list[float] = []
-        current = 0.0
-        for y in ys_processed:
-            offsets.append(current)
-            current += float(y.max() - y.min()) * offset_factor
+        cur = 0.0
+        for y in ys_proc:
+            offsets.append(cur)
+            cur += float(y.max() - y.min()) * offset_factor
 
-        # Plot curves
-        for d, y, offset in zip(datasets, ys_processed, offsets):
+        # ── Plot curves ───────────────────────────────────────────────────────
+        for d, y, offset in zip(datasets, ys_proc, offsets):
             x = d["x"]
-            line_color  = d.get("color", "black")
-            label_color = d.get("label_color", line_color)   # independent text color
+            lc = d.get("color", "black")
+            tc = d.get("label_color", lc)
             name = d.get("name", "")
 
-            y_shifted = y + offset
-            ax.plot(x, y_shifted, color=line_color, linewidth=line_width)
+            ax.plot(x, y + offset, color=lc, linewidth=line_width)
 
-            # Place label — find y at label_x, raise slightly
             if name:
                 try:
-                    idx = int(np.searchsorted(x, label_x))
-                    idx = min(max(idx, 0), len(y_shifted) - 1)
-                    y_at_label = float(y_shifted[idx])
+                    idx = int(np.clip(np.searchsorted(x, label_x), 0, len(y) - 1))
+                    y_pos = float((y + offset)[idx]) + float(y.max() - y.min()) * 0.05
                 except Exception:
-                    y_at_label = offset + float(y.max()) * 0.5
+                    y_pos = offset + float(y.max()) * 0.5
 
-                y_span = float(y.max() - y.min())
                 ax.text(
-                    label_x,
-                    y_at_label + y_span * 0.05,
-                    name,
-                    ha="left",
-                    va="bottom",
-                    fontsize=font_size - 1,
-                    color=label_color,
-                    fontfamily=font_family,
+                    label_x, y_pos, _safe_text(name),
+                    ha="left", va="bottom",
+                    fontsize=label_fontsize,
+                    color=tc,
+                    fontfamily=generic_family,
                 )
 
-        # ── Axes styling: match Origin reference ──────────────────────────
+        # ── Axes styling ──────────────────────────────────────────────────────
         ax.set_xlim(x_min, x_max)
-        ax.set_xlabel(x_label, fontsize=font_size, fontfamily=font_family)
-        ax.set_ylabel(y_label, fontsize=font_size, fontfamily=font_family)
 
-        # Complete box frame (all 4 spines visible)
+        # All 4 spines visible (complete box), uniform weight
         for spine in ax.spines.values():
             spine.set_visible(True)
             spine.set_linewidth(1.5)
 
-        # y-axis: show spine but no tick marks or labels
-        ax.set_yticks([])
-        ax.yaxis.set_tick_params(length=0)
-
-        # x-axis: major ticks every 5°, minor ticks every 1°
+        # x-axis: major every 5°, minor every 1° (AutoMinorLocator(5))
         x_span = x_max - x_min
         major_step = 5.0 if x_span <= 60 else 10.0
         ax.xaxis.set_major_locator(MultipleLocator(major_step))
-        ax.xaxis.set_minor_locator(AutoMinorLocator(5))   # 5 minor per major → 1° step
+        ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+
+        # x label
+        ax.set_xlabel(_safe_text(x_label), fontsize=axis_fontsize,
+                      fontfamily=generic_family, labelpad=10)
+
+        # y axis: spine visible, label present, but NO ticks and NO tick labels
+        ax.set_yticks([])
+        ax.yaxis.set_tick_params(length=0)
+        ax.set_ylabel(_safe_text(y_label), fontsize=axis_fontsize,
+                      fontfamily=generic_family, labelpad=10)
+
+        # Tick label font size (set explicitly, not via rcParams which may be off)
+        ax.tick_params(axis="x", labelsize=tick_fontsize, which="major")
 
         plt.tight_layout()
-
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
         plt.close(fig)
@@ -204,8 +244,8 @@ def make_plotly_preview(
     import plotly.graph_objects as go
 
     fig = go.Figure()
+    cur = 0.0
 
-    current_offset = 0.0
     for d in datasets:
         x = d["x"]
         y = d["y"].astype(float)
@@ -213,38 +253,33 @@ def make_plotly_preview(
         name = d.get("name", "")
 
         if normalize:
-            y_min_v, y_max_v = y.min(), y.max()
-            if y_max_v > y_min_v:
-                y = (y - y_min_v) / (y_max_v - y_min_v)
+            lo, hi = y.min(), y.max()
+            if hi > lo:
+                y = (y - lo) / (hi - lo)
 
-        y_span = float(y.max() - y.min()) if len(y) > 0 else 1.0
-        y_shifted = y + current_offset
-
+        span = float(y.max() - y.min())
         fig.add_trace(go.Scatter(
-            x=x,
-            y=y_shifted,
-            mode="lines",
-            name=name,
+            x=x, y=y + cur,
+            mode="lines", name=name,
             line=dict(color=color, width=1),
-            hovertemplate=f"{name}<br>2θ=%{{x:.3f}}°<br>I=%{{y:.4f}}<extra></extra>",
+            hovertemplate=f"{name}<br>2θ=%{{x:.3f}}°<extra></extra>",
         ))
-
-        current_offset += y_span * offset_factor
+        cur += span * offset_factor
 
     fig.update_layout(
         xaxis_title=x_label,
         yaxis_title=y_label,
         yaxis=dict(showticklabels=False, showgrid=False),
         hovermode="x unified",
-        height=500,
+        height=520,
         margin=dict(l=60, r=20, t=20, b=60),
         plot_bgcolor="white",
         paper_bgcolor="white",
         showlegend=True,
         legend=dict(x=1.01, y=1, xanchor="left"),
     )
-    fig.update_xaxes(showgrid=False, mirror=True, ticks="inside",
+    fig.update_xaxes(showgrid=False, mirror=True, ticks="outside",
                      showline=True, linecolor="black")
-    fig.update_yaxes(showgrid=False, showline=False)
-
+    fig.update_yaxes(showgrid=False, showline=True, linecolor="black",
+                     mirror=True)
     return fig
