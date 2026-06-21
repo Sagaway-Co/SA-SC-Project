@@ -1,0 +1,6 @@
+<svg width="184" height="40" viewBox="0 0 184 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HSE Check">
+  <rect x="0.75" y="0.75" width="38.5" height="38.5" rx="10.25" fill="#0D0E11" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"></rect>
+  <path d="M11 20.5 L17.2 26.5 L29 13.5" stroke="#C6F24E" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="11" cy="20.5" r="2.7" fill="#0D0E11" stroke="#C6F24E" stroke-width="2.4"></circle>
+  <text x="52" y="27.5" font-family="Geist, Inter, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="-0.02em" fill="#F4F6F7">HSE <tspan fill="#F4F6F7">Check</tspan></text>
+</svg>

@@ -1,0 +1,51 @@
+/* HSE Check — Effects: radii, shadows, glows, blur, motion
+ * On dark UI, depth comes from layered surfaces + hairline borders +
+ * a faint top highlight, not heavy drop shadows. Accent glow is reserved
+ * for primary CTAs and the "live" data-screen moments.
+ */
+:root {
+  /* ----- Corner radii ----- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 22px;
+  --radius-3xl: 32px;
+  --radius-full: 999px;
+
+  /* ----- Shadows (dark UI) ----- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.6);
+
+  /* Faint inner top highlight that makes cards read as lit from above */
+  --highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.06);   /* @kind shadow */
+  --highlight-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.04); /* @kind shadow */
+
+  /* ----- Accent glow ----- */
+  --glow-accent: 0 0 0 1px rgba(198, 242, 78, 0.2), 0 8px 36px rgba(198, 242, 78, 0.28);
+  --glow-accent-soft: 0 6px 40px rgba(198, 242, 78, 0.18);
+  --glow-cyan: 0 8px 40px rgba(84, 214, 255, 0.22);
+
+  /* ----- Blur (glass) ----- */
+  --blur-sm: 8px;   /* @kind other */
+  --blur-md: 16px;  /* @kind other */
+  --blur-lg: 28px;  /* @kind other */
+
+  /* ----- Gradients ----- */
+  --gradient-accent: linear-gradient(135deg, #DAFB6B 0%, #C6F24E 50%, #9FE03A 100%); /* @kind color */
+  --gradient-surface: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 100%); /* @kind color */
+  --gradient-text-fade: linear-gradient(180deg, #F4F6F7 0%, #9CA3AD 100%); /* @kind color */
+  --grid-line: rgba(255, 255, 255, 0.045); /* @kind color */
+
+  /* ----- Motion ----- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);   /* @kind other */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* @kind other */
+  --dur-fast: 140ms;   /* @kind other */
+  --dur-base: 240ms;   /* @kind other */
+  --dur-slow: 480ms;   /* @kind other */
+  --dur-slower: 800ms; /* @kind other */
+}

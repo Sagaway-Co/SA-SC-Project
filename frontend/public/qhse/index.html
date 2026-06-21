@@ -1,0 +1,82 @@
+<!-- @dsCard group="Website" viewport="1280x880" name="HSE Check — Homepage" subtitle="Animated dark SaaS marketing site" -->
+<!-- @startingPoint section="Website" subtitle="Full animated marketing homepage" viewport="1280x880" -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QHSE 统一管理平台 — 面向高危行业的新一代安全管理平台</title>
+<link rel="icon" href="/qhse/assets/logo-mark.svg" />
+<link rel="stylesheet" href="/qhse/styles.css" />
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg-base); color: var(--text-primary);
+    font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--accent); color: var(--text-on-accent); }
+  @media (max-width: 760px) {
+    .hse-navlinks { display: none !important; }
+    .hse-feat-grid { grid-template-columns: 1fr !important; }
+    .hse-feat-grid > * { grid-column: span 1 !important; }
+    .hse-bs-grid { grid-template-columns: 1fr !important; }
+    .hse-foot-grid { grid-template-columns: 1fr 1fr !important; }
+  }
+  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-base); z-index: 100; transition: opacity .4s; }
+  #boot.hide { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="boot"><img src="/logo-sm.png" width="48" height="48" alt="" style="filter:brightness(0) invert(1)" /></div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="/qhse/_ds_bundle.js"></script>
+
+<script type="text/babel" src="/qhse/ui_kits/website/icons.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/ProductDashboard.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-util.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-mock.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-nav.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-hero.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-features.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-workflow.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-showcase.jsx"></script>
+<script type="text/babel" src="/qhse/ui_kits/website/site-cta.jsx"></script>
+<script type="text/babel" data-presets="react">
+  function App() {
+    const { SiteNav, SiteHero, SiteFeatures, SiteWorkflow, SiteDashboard, SiteTrust, SiteCTA, SiteFooter } = window;
+    return (
+      <>
+        <SiteNav />
+        <main>
+          <SiteHero />
+          <SiteFeatures />
+          <SiteWorkflow />
+          <SiteDashboard />
+          <SiteTrust />
+          <SiteCTA />
+        </main>
+        <SiteFooter />
+      </>
+    );
+  }
+  // wait for all babel-src modules to register on window
+  function ready() {
+    return window.SiteNav && window.SiteHero && window.SiteFeatures && window.SiteWorkflow
+      && window.SiteDashboard && window.SiteTrust && window.SiteCTA && window.SiteFooter;
+  }
+  (function mount() {
+    if (!ready()) { setTimeout(mount, 30); return; }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    const boot = document.getElementById('boot');
+    if (boot) { boot.classList.add('hide'); setTimeout(() => boot.remove(), 450); }
+  })();
+</script>
+</body>
+</html>

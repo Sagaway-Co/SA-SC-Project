@@ -1,0 +1,47 @@
+/* HSE Check — Typography
+ * Geist for UI + display, Geist Mono for data / eyebrows / metadata.
+ * Display sizes are large and tightly tracked for marketing impact.
+ * Mono labels are uppercase with positive tracking (the "technical" voice).
+ */
+:root {
+  --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'SF Mono', ui-monospace, 'Roboto Mono', monospace;
+  --font-display: var(--font-sans);
+
+  /* ----- Font sizes ----- */
+  --text-display-2xl: clamp(56px, 9vw, 104px);
+  --text-display-xl: clamp(48px, 7.5vw, 84px);
+  --text-display-lg: clamp(40px, 5.5vw, 64px);
+  --text-display-md: clamp(32px, 4vw, 48px);
+  --text-h1: 40px;
+  --text-h2: 32px;
+  --text-h3: 24px;
+  --text-h4: 20px;
+  --text-body-lg: 18px;
+  --text-body: 16px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+  --text-micro: 12px;
+  --text-eyebrow: 12px;
+
+  /* ----- Weights ----- */
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ----- Line heights ----- */
+  --leading-none: 1;
+  --leading-tight: 1.08;
+  --leading-snug: 1.22;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ----- Letter spacing ----- */
+  --tracking-display: -0.035em;   /* big headlines */
+  --tracking-tight: -0.02em;      /* h1–h3 */
+  --tracking-normal: -0.01em;     /* body */
+  --tracking-wide: 0.02em;
+  --tracking-eyebrow: 0.14em;     /* mono uppercase labels */
+}

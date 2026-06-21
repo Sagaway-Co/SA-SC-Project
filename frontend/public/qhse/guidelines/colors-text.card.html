@@ -1,0 +1,18 @@
+<!-- @dsCard group="Colors" viewport="700x190" name="Text on Dark" subtitle="Primary → disabled, plus on-accent" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><link rel="stylesheet" href="../styles.css"/>
+<style>
+  html,body{margin:0;background:var(--bg-base);font-family:var(--font-sans);}
+  .wrap{padding:26px;display:flex;flex-direction:column;gap:12px;}
+  .row{display:flex;align-items:baseline;gap:14px;}
+  .t{font-size:22px;font-weight:600;letter-spacing:-0.02em;width:300px;}
+  .m{font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary);}
+  .onacc{background:var(--accent);color:var(--text-on-accent);padding:4px 12px;border-radius:var(--radius-sm);font-weight:600;}
+</style></head>
+<body><div class="wrap">
+  <div class="row"><span class="t" style="color:var(--text-primary)">Primary — 主要文字</span><span class="m">--text-primary #F4F6F7</span></div>
+  <div class="row"><span class="t" style="color:var(--text-secondary)">Secondary — 正文</span><span class="m">--text-secondary #9CA3AD</span></div>
+  <div class="row"><span class="t" style="color:var(--text-tertiary)">Tertiary — 辅助</span><span class="m">--text-tertiary #686E78</span></div>
+  <div class="row"><span class="t" style="color:var(--text-disabled)">Disabled</span><span class="m">--text-disabled #474C54</span></div>
+  <div class="row"><span class="t onacc" style="width:auto">On accent</span><span class="m">--text-on-accent #0B1003</span></div>
+</div></body></html>

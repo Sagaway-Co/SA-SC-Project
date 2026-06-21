@@ -1,0 +1,8 @@
+/* HSE Check — Webfonts
+ * Geist + Geist Mono (Vercel's typefaces) loaded from Google Fonts.
+ * Geist = UI + display (tight tracking gives the big-headline impact).
+ * Geist Mono = data, labels, eyebrows, technical metadata.
+ * NOTE: loaded via Google Fonts CDN (no binaries committed). For fully
+ * offline consumers, swap in self-hosted .woff2 + @font-face here.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400..600&display=swap');

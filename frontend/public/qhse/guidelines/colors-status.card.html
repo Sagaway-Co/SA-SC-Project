@@ -1,0 +1,16 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="Semantic Status" subtitle="Success / warning / danger / info" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><link rel="stylesheet" href="../styles.css"/>
+<style>
+  html,body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font-sans);}
+  .wrap{padding:24px;display:flex;gap:16px;flex-wrap:wrap;}
+  .sw{width:150px;}
+  .chip{height:56px;border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;border:1px solid var(--border-subtle);}
+  .name{font-family:var(--font-mono);font-size:11px;margin-top:8px;color:var(--text-secondary);}
+</style></head>
+<body><div class="wrap">
+  <div class="sw"><div class="chip" style="background:var(--success-soft);color:var(--success)">已闭环</div><div class="name">--success</div></div>
+  <div class="sw"><div class="chip" style="background:var(--warning-soft);color:var(--warning)">待整改</div><div class="name">--warning</div></div>
+  <div class="sw"><div class="chip" style="background:var(--danger-soft);color:var(--danger)">超期</div><div class="name">--danger</div></div>
+  <div class="sw"><div class="chip" style="background:var(--cyan-soft);color:var(--cyan)">进行中</div><div class="name">--info / --cyan</div></div>
+</div></body></html>

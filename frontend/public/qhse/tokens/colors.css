@@ -1,0 +1,79 @@
+/* HSE Check — Color System
+ * Dark-first. A cool near-black canvas with layered neutral surfaces,
+ * hairline luminous borders, and a single high-visibility lime accent.
+ * The lime is intentional: it echoes hi-vis safety gear / hazard tape,
+ * and is the deliberate opposite of the "government blue" category norm.
+ * Hazard-severity ramp maps to GB 6441 incident grading.
+ */
+:root {
+  /* ----- Base canvas & surfaces (dark) ----- */
+  --black: #050506;
+  --bg-base: #08090A;        /* page background */
+  --bg-sunken: #060708;      /* wells, code, insets */
+  --bg-raised: #0D0E11;      /* sections lifted off base */
+  --surface-1: #121317;      /* card */
+  --surface-2: #181A1F;      /* card hover / nested */
+  --surface-3: #20232A;      /* popover / elevated control */
+  --surface-inset: #0B0C0E;
+
+  /* ----- Hairline borders (luminous, on dark) ----- */
+  --border-subtle: rgba(255, 255, 255, 0.055);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-accent: rgba(198, 242, 78, 0.45);
+
+  /* ----- Text ----- */
+  --text-primary: #F4F6F7;
+  --text-secondary: #9CA3AD;
+  --text-tertiary: #686E78;
+  --text-disabled: #474C54;
+  --text-on-accent: #0B1003;   /* near-black for use on lime */
+  --text-inverse: #0A0B0C;     /* for light surfaces */
+
+  /* ----- Accent: high-vis lime ----- */
+  --accent: #C6F24E;
+  --accent-hover: #D4FB67;
+  --accent-press: #B3E03C;
+  --accent-soft: rgba(198, 242, 78, 0.14);   /* tint fill */
+  --accent-softer: rgba(198, 242, 78, 0.07);
+  --accent-line: rgba(198, 242, 78, 0.35);
+  --accent-text: #CBF45C;      /* lime as text on dark (slightly lifted) */
+
+  /* ----- Secondary signal: electric cyan (data viz, links) ----- */
+  --cyan: #54D6FF;
+  --cyan-soft: rgba(84, 214, 255, 0.14);
+
+  /* ----- Semantic status ----- */
+  --success: #46DD8A;
+  --success-soft: rgba(70, 221, 138, 0.14);
+  --warning: #FFB23E;
+  --warning-soft: rgba(255, 178, 62, 0.14);
+  --danger: #FF5C4D;
+  --danger-soft: rgba(255, 92, 77, 0.14);
+  --info: var(--cyan);
+  --info-soft: var(--cyan-soft);
+
+  /* ----- Hazard severity ramp (GB 6441 grading) ----- */
+  --grade-1: #FF4D4D;   /* I  级 — 特别重大 / critical */
+  --grade-2: #FF8A3D;   /* II 级 — 重大 */
+  --grade-3: #FFC93D;   /* III级 — 较大 */
+  --grade-4: #54D6FF;   /* IV 级 — 一般 */
+
+  /* ----- Data-viz categorical (charts, KPI) ----- */
+  --viz-1: #C6F24E;
+  --viz-2: #54D6FF;
+  --viz-3: #B98CFF;
+  --viz-4: #FF8A3D;
+  --viz-5: #46DD8A;
+  --viz-6: #FF6B9D;
+
+  /* ----- Semantic aliases (use these in components) ----- */
+  --surface-card: var(--surface-1);
+  --surface-card-hover: var(--surface-2);
+  --surface-overlay: var(--surface-3);
+  --text-body: var(--text-secondary);
+  --text-heading: var(--text-primary);
+  --link: var(--accent-text);
+  --focus-ring: rgba(198, 242, 78, 0.55);
+  --scrim: rgba(5, 5, 6, 0.72);
+}

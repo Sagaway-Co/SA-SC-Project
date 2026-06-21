@@ -1,0 +1,70 @@
+<!-- @dsCard group="Components" viewport="700x440" name="Core — Buttons, Badges, Eyebrow, Card" subtitle="Primary controls & surfaces" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-sans); }
+  .wrap { padding: 28px; display: flex; flex-direction: column; gap: 26px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 2px; width: 100%; }
+</style>
+</head>
+<body>
+<div id="root" class="wrap"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { Button, Badge, Eyebrow, Card } = window.HSECheckDesignSystem_6f6b44;
+  const arrow = <span style={{fontSize:15, lineHeight:0}}>→</span>;
+  function Demo() {
+    return (
+      <>
+        <div>
+          <div className="lbl">Buttons</div>
+          <div className="row">
+            <Button variant="primary" iconRight={arrow}>申请演示</Button>
+            <Button variant="secondary">查看文档</Button>
+            <Button variant="outline">联系销售</Button>
+            <Button variant="ghost">取消</Button>
+            <Button variant="danger">删除</Button>
+          </div>
+          <div className="row" style={{marginTop:12}}>
+            <Button size="sm">Small</Button>
+            <Button size="md">Medium</Button>
+            <Button size="lg">Large</Button>
+            <Button loading>Loading</Button>
+            <Button disabled>Disabled</Button>
+          </div>
+        </div>
+        <div>
+          <div className="lbl">Badges & hazard grades</div>
+          <div className="row">
+            <Badge tone="accent" variant="dot">实时采集</Badge>
+            <Badge tone="success" variant="dot">已闭环</Badge>
+            <Badge tone="warning">待整改</Badge>
+            <Badge tone="danger">超期</Badge>
+            <Badge tone="grade1">I 级</Badge>
+            <Badge tone="grade2">II 级</Badge>
+            <Badge tone="grade3">III 级</Badge>
+            <Badge tone="grade4">IV 级</Badge>
+          </div>
+        </div>
+        <div>
+          <div className="lbl">Eyebrow + Card</div>
+          <Card spotlight interactive padding={22} style={{maxWidth:340}}>
+            <Eyebrow>证据链 / Evidence</Eyebrow>
+            <div style={{fontSize:20, fontWeight:600, letterSpacing:'-0.02em', margin:'10px 0 6px'}}>不可篡改</div>
+            <div style={{fontSize:14, color:'var(--text-secondary)', lineHeight:1.5}}>北斗定位 + Canvas 水印 + SHA-256 指纹，法律级可信采集。</div>
+          </Card>
+        </div>
+      </>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

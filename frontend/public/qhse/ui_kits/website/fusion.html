@@ -1,0 +1,157 @@
+<!-- @dsCard group="Website" viewport="1280x1400" name="融合方案 · 真实产品 × 高端官网" subtitle="3 种把真实大屏嵌入深色站点的外框处理" -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>融合方案 · HSE Check</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 56px var(--gutter) 120px; }
+  .lede { max-width: 720px; margin-bottom: 8px; }
+  .blk { margin-top: 72px; }
+  .blk > .cap { display: flex; align-items: baseline; gap: 12px; margin-bottom: 22px; }
+  .blk .num { font-family: var(--font-mono); font-size: 13px; color: var(--accent-text); }
+  .blk h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+  .blk .desc { font-size: 14px; color: var(--text-secondary); max-width: 560px; margin: 6px 0 0; line-height: 1.6; }
+  /* scale wrapper for the 1280x720 dashboard */
+  .dash-scale { width: 1280px; height: 720px; transform-origin: top left; }
+  .dash-fit { overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="root" class="page"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="ProductDashboard.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const { Eyebrow, Badge } = window.HSECheckDesignSystem_6f6b44;
+const Icon = window.Icon;
+
+/* Scales the fixed 1280x720 dashboard down to a given render width. */
+function Dash({ width = 1040 }) {
+  const scale = width / 1280;
+  const { ProductDashboard } = window;
+  return (
+    <div className="dash-fit" style={{ width, height: 720 * scale, borderRadius: 'inherit' }}>
+      <div className="dash-scale" style={{ transform: `scale(${scale})` }}>
+        <ProductDashboard />
+      </div>
+    </div>
+  );
+}
+
+/* ---- A: 浏览器框 + 氛围光（推荐：最像真实产品截图） ---- */
+function BrowserFrame({ width }) {
+  return (
+    <div style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--highlight-top), var(--shadow-xl)' }}>
+      <div style={{ height: 40, display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }}>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#FF5F57' }} />
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#FEBC2E' }} />
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28C840' }} />
+        <div style={{ margin: '0 auto', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)', padding: '3px 16px', background: 'var(--bg-base)', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 7 }}>
+          <Icon name="lock" size={11} color="var(--accent-text)" /> qhse.sagaway.cn/bigscreen
+        </div>
+      </div>
+      <Dash width={width} />
+    </div>
+  );
+}
+
+function VariantA() {
+  return (
+    <div style={{ position: 'relative', padding: '36px 0' }}>
+      {/* ambient lime glow behind */}
+      <div style={{ position: 'absolute', inset: '0 8% 6% 8%', background: 'radial-gradient(60% 60% at 50% 45%, rgba(198,242,78,0.18), transparent 70%)', filter: 'blur(30px)' }} />
+      <div style={{ position: 'relative', maxWidth: 1040, margin: '0 auto' }}>
+        <BrowserFrame width={1038} />
+      </div>
+    </div>
+  );
+}
+
+/* ---- B: 倾斜透视 + 顶部渐隐（hero 里"产品在发光"的感觉） ---- */
+function VariantB() {
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--border-subtle)', background: 'var(--bg-sunken)', padding: '56px 0 0' }}>
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)', backgroundSize: '46px 46px', maskImage: 'radial-gradient(100% 80% at 50% 0%, #000 30%, transparent 75%)', WebkitMaskImage: 'radial-gradient(100% 80% at 50% 0%, #000 30%, transparent 75%)' }} />
+        <div style={{ position: 'absolute', top: '8%', left: '20%', width: 480, height: 320, background: 'radial-gradient(circle, rgba(198,242,78,0.16), transparent 65%)', filter: 'blur(20px)' }} />
+      </div>
+      <div style={{ position: 'relative', width: 920, margin: '0 auto', perspective: 1600 }}>
+        <div style={{ transform: 'rotateX(14deg)', transformOrigin: 'top center', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-default)', boxShadow: '0 40px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(198,242,78,0.12)' }}>
+          <Dash width={918} />
+        </div>
+        {/* fade the bottom into the section */}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 140, background: 'linear-gradient(transparent, var(--bg-sunken))' }} />
+      </div>
+    </div>
+  );
+}
+
+/* ---- C: 双色描边卡 + 角标（产品卡，强调"这是真实系统"） ---- */
+function VariantC() {
+  return (
+    <div style={{ position: 'relative', maxWidth: 1040, margin: '0 auto' }}>
+      <div style={{ position: 'relative', borderRadius: 'var(--radius-2xl)', padding: 1, background: 'linear-gradient(135deg, rgba(198,242,78,0.5), rgba(57,198,240,0.4) 50%, transparent)', boxShadow: 'var(--glow-accent-soft)' }}>
+        <div style={{ borderRadius: 'calc(var(--radius-2xl) - 1px)', overflow: 'hidden', background: 'var(--bg-raised)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <img src="../../assets/logo-mark.svg" width="20" height="20" alt="" />
+              <span style={{ fontSize: 14, fontWeight: 600 }}>集团安全态势 · 实时大屏</span>
+            </div>
+            <Badge tone="accent" variant="dot" size="sm">真实产品界面</Badge>
+          </div>
+          <Dash width={1038} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <>
+      <Eyebrow>融合研究 / Fusion study</Eyebrow>
+      <h1 className="lede" style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 'clamp(34px,5vw,52px)', letterSpacing: 'var(--tracking-display)', lineHeight: 1.08, margin: '16px 0 0' }}>
+        官网走高端深色调性，<br/>截图保持真实产品原貌
+      </h1>
+      <p className="lede" style={{ fontSize: 17, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 18 }}>
+        参考 Linear / Stripe / Retool 的做法：<b style={{ color: 'var(--text-primary)' }}>不改产品 UI，只做外框与氛围。</b>
+        下面三种处理都嵌入了你<b style={{ color: 'var(--text-primary)' }}>真实的"安全生产隐患监控指挥中心"大屏</b>（真配色、真数据），
+        区别只在外框。你那块深蓝大屏本身就和深色站点天然相融——荧光绿只出现在外框与光晕上，形成"科技公司"的画框感。
+      </p>
+
+      <div className="blk">
+        <div className="cap"><span className="num">A</span><div><h3>浏览器框 + 荧光绿氛围光　<span style={{ fontSize: 12, color: 'var(--accent-text)', fontFamily: 'var(--font-mono)' }}>推荐</span></h3><p className="desc">最克制、最像"真实产品截图"。深色站点 + 浏览器 chrome + 背后一层荧光绿光晕，产品原貌 100% 保留。Hero 首屏首选。</p></div></div>
+        <VariantA />
+      </div>
+
+      <div className="blk">
+        <div className="cap"><span className="num">B</span><div><h3>倾斜透视 + 网格渐隐</h3><p className="desc">产品向后微倾、底部融进深色背景，配网格与光晕——"产品在发光"的动感，适合 hero 大图或功能区的视觉焦点。</p></div></div>
+        <VariantB />
+      </div>
+
+      <div className="blk">
+        <div className="cap"><span className="num">C</span><div><h3>双色描边卡 + 角标</h3><p className="desc">荧光绿→青的渐变描边把产品"框"起来，顶栏角标强调"真实系统界面"。适合功能区并排展示多张产品图。</p></div></div>
+        <VariantC />
+      </div>
+    </>
+  );
+}
+
+(function mount(){
+  if(!window.ProductDashboard || !window.Icon){ setTimeout(mount, 30); return; }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+})();
+</script>
+</body>
+</html>

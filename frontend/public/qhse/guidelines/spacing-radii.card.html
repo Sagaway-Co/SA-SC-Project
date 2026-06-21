@@ -1,0 +1,18 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Corner Radii" subtitle="xs → full" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><link rel="stylesheet" href="../styles.css"/>
+<style>
+  html,body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font-sans);}
+  .wrap{padding:26px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .box{width:64px;height:64px;background:var(--surface-2);border:1px solid var(--border-strong);border-top:2px solid var(--accent);}
+  .m{font-family:var(--font-mono);font-size:10px;color:var(--text-tertiary);}
+</style></head>
+<body><div class="wrap">
+  <div class="col"><div class="box" style="border-radius:var(--radius-sm)"></div><div class="m">sm 6</div></div>
+  <div class="col"><div class="box" style="border-radius:var(--radius-md)"></div><div class="m">md 8</div></div>
+  <div class="col"><div class="box" style="border-radius:var(--radius-lg)"></div><div class="m">lg 12</div></div>
+  <div class="col"><div class="box" style="border-radius:var(--radius-xl)"></div><div class="m">xl 16</div></div>
+  <div class="col"><div class="box" style="border-radius:var(--radius-2xl)"></div><div class="m">2xl 22</div></div>
+  <div class="col"><div class="box" style="border-radius:var(--radius-3xl)"></div><div class="m">3xl 32</div></div>
+</div></body></html>
