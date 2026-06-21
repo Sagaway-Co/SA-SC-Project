@@ -64,7 +64,7 @@
           ))}
         </div>
         <div style={{ maxWidth: 'var(--container-wide)', margin: '0 auto', padding: '20px var(--gutter)', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>© 2026 QHSE 统一管理平台 · 京 ICP 备 2026000000 号</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>© 2026 杭州通微人工智能科技有限公司 · 浙ICP备2026038983号</span>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>等保三级 · ISO 27001 · 私有化部署可选</span>
         </div>
       </footer>
