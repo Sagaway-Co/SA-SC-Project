@@ -29,9 +29,9 @@
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
             <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-              <img src="/logo-sm.png" style="filter:brightness(0) invert(1);opacity:.88" width="30" height="30" alt="" />
-              <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                HSE Check
+              <img src="/logo-sm.png" style={{filter:'brightness(0) invert(1)',opacity:.88,display:'block'}} width="36" height="36" alt="Sagaway" />
+              <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                QHSE 统一管理平台
               </span>
             </a>
             <nav style={{ display: 'flex', gap: 4 }} className="hse-navlinks">

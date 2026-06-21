@@ -40,7 +40,7 @@
         <Reveal delay={120}>
           <Card padding={28} glow style={{ borderColor: 'var(--border-accent)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <img src="/logo-sm.png" style="filter:brightness(0) invert(1)" width="22" height="22" alt="" />
+              <img src="/logo-sm.png" style={{filter:"brightness(0) invert(1)"}} width="22" height="22" alt="" />
               <span style={{ fontSize: 15, fontWeight: 600 }}>QHSE 统一管理平台</span>
             </div>
             {gain.map((p) => (

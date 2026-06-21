@@ -45,7 +45,7 @@
       <footer style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
         <div style={{ maxWidth: 'var(--container-wide)', margin: '0 auto', padding: '64px var(--gutter) 40px', display: 'grid', gridTemplateColumns: '1.6fr repeat(4, 1fr)', gap: 32 }} className="hse-foot-grid">
           <div>
-            <img src="/logo-sm.png" style="filter:brightness(0) invert(1);opacity:.85" height="32" alt="QHSE 统一管理平台" />
+            <img src="/logo-sm.png" style={{filter:"brightness(0) invert(1)",opacity:.85}} height="32" alt="QHSE 统一管理平台" />
             <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: '16px 0 0', maxWidth: 240 }}>
               面向高危行业的新一代安全管理 SaaS。可信采集 · 智能整改 · 数据驾驶舱。
             </p>
